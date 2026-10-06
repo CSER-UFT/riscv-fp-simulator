@@ -1,6 +1,6 @@
 /**
- * Simulador de Ponto Flutuante RISC-V: vistas (conversão, operações, experimentos, aritmética inteira e
- * exercícios), estado salvo no navegador, link compartilhável, exportação em LaTeX, idioma e tema.
+ * Simulador de Ponto Flutuante RISC-V: vistas (conversão, operações, experimentos, aritmética inteira, ponto
+ * fixo e exercícios), estado salvo no navegador, link compartilhável, exportação em LaTeX, idioma e tema.
  */
 import { t, LANGUAGES, getLanguage, setLanguage } from './i18n/index.js';
 import { Help } from './ui/help.js';
@@ -9,9 +9,10 @@ import * as convert from './ui/convert.js';
 import * as ops from './ui/ops.js';
 import * as experiments from './ui/experiments.js';
 import * as integer from './ui/integer.js';
+import * as fixed from './ui/fixed.js';
 import * as exercise from './ui/exercise.js';
 
-const VIEWS = { convert, ops, exp: experiments, int: integer, ex: exercise };
+const VIEWS = { convert, ops, exp: experiments, int: integer, fix: fixed, ex: exercise };
 const VIEW_IDS = Object.keys(VIEWS);
 const STORE = 'fp.state';
 
@@ -171,7 +172,7 @@ themeBtn.addEventListener('click', () => {
 
 const readme = document.getElementById('readme');
 const help = new Help(readme, () => {});
-const HELP_SECTION = { convert: 'convert', ops: 'ops', exp: 'experiments', int: 'integer', ex: 'classroom' };
+const HELP_SECTION = { convert: 'convert', ops: 'ops', exp: 'experiments', int: 'integer', fix: 'fixed', ex: 'classroom' };
 // Ligações para uma seção da ajuda dentro das vistas (data-help="seção").
 main.addEventListener('click', (e) => {
     const b = e.target.closest('[data-help]');

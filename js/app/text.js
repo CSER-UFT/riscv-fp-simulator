@@ -5,6 +5,7 @@
 import { t } from '../i18n/index.js';
 import { flagList } from '../fp/core.js';
 import { hex } from './analysis.js';
+import { exactDecimal } from '../fp/decimal.js';
 
 /** Explicação da decisão de arredondamento a partir de G, R, S e do bit menos significativo. */
 export function roundReason(p, sign) {
@@ -112,4 +113,30 @@ export function droppedSummary(ex) {
     if (ex.r >= 1) return t('rx.overRange', { lo: ex.lo.text });
     const rel = ex.r > 1 ? t('rx.relBeyond') : ex.half ? t('rx.relHalf') : ex.G ? t('rx.relAbove') : t('rx.relBelow');
     return t('rx.grs', { G: ex.G, R: ex.R, S: ex.S, r: ex.r > 1 ? '>1' : ex.dLo, rel });
+}
+
+/**
+ * Explicação de um passo da conta de ponto fixo. Os valores guardados são inteiros em unidades de 2^-n;
+ * o texto mostra o inteiro e, entre parênteses, o valor que ele representa.
+ */
+export function fixedStepText(step, fx) {
+    const val = (raw, n = fx.n) => {
+        const a = raw < 0n ? -raw : raw;
+        const exact = exactDecimal(raw < 0n ? 1 : 0, a, 1n << BigInt(n));
+        // Valores longos (muitos bits de fração) aparecem aproximados.
+        return exact.length <= 20 ? exact : `≈ ${Number(exact).toPrecision(12).replace(/\.?0+(e|$)/, '$1')}`;
+    };
+    const p = { a: step.a?.toString(), b: step.b?.toString(), v: step.value?.toString() };
+    switch (step.key) {
+        case 'fxAdd': return t('fx.st.add', { ...p, x: val(step.value) });
+        case 'fxSub': return t('fx.st.sub', { ...p, x: val(step.value) });
+        case 'fxMul': return t('fx.st.mul', { ...p, f: step.fracBits, x: val(step.value, step.fracBits) });
+        case 'fxShift': return t('fx.st.shift', { n: step.n });
+        case 'fxDiv': return t('fx.st.div', { ...p, n: fx.n });
+        case 'fxRound': return t('fx.st.round', { v: p.v, x: val(step.value), mode: step.mode.toUpperCase() });
+        case 'fxSat': return t('fx.st.sat', { v: p.v, raw: step.raw.toString(), x: val(step.raw), min: fx.min.toString(), max: fx.max.toString() });
+        case 'fxWrap': return t('fx.st.wrap', { v: p.v, raw: step.raw.toString(), x: val(step.raw), bits: fx.bits });
+        case 'fxDivZero': return t('fx.st.divZero');
+        default: return step.key;
+    }
 }

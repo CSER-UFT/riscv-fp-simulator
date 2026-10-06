@@ -7,8 +7,9 @@ import assert from 'node:assert/strict';
 import { analyzeConversion, analyzeOperation, FORMAT_IDS, ROUNDING_MODES } from '../js/app/analysis.js';
 import { EXPERIMENTS } from '../js/app/experiments.js';
 import { generate, QUESTION_TYPES } from '../js/app/questions.js';
-import { conversionLatex, operationLatex, experimentLatex, questionsLatex, integerLatex } from '../js/app/latex.js';
-import { stepText, intStepText, modeReason, droppedSummary } from '../js/app/text.js';
+import { conversionLatex, operationLatex, experimentLatex, questionsLatex, integerLatex, fixedLatex } from '../js/app/latex.js';
+import { analyzeFixed } from '../js/app/fixed.js';
+import { stepText, intStepText, modeReason, droppedSummary, fixedStepText } from '../js/app/text.js';
 import { compute } from '../js/ui/integer.js';
 import { setLanguage } from '../js/i18n/index.js';
 import * as core from '../js/fp/core.js';
@@ -151,4 +152,28 @@ test('explicação dos modos: empate, negativos, estouro, exato e textos sem lac
                 assert.equal(d.sig, lo, `${id} ${v}: bits mantidos = lo`);
             }
         }
+});
+
+test('ponto fixo: análise, textos dos passos e LaTeX', () => {
+    for (const lang of ['pt', 'en']) {
+        setLanguage(lang);
+        for (const [m, n, signed] of [[3, 4, true], [0, 15, true], [7, 8, true], [8, 8, false], [15, 16, true], [31, 32, true], [2, 3, true]]) {
+            for (const op of ['conv', 'add', 'sub', 'mul', 'div']) {
+                for (const [a, b] of [['0.1', '2.25'], ['6', '3'], ['-1', '0'], ['1/3', '-0.7'], ['0', '0'], ['1e9', '1e-9']]) {
+                    for (const overflow of ['sat', 'wrap']) {
+                        const r = analyzeFixed({ m, n, signed, op, a, b, overflow, mode: 'rne' });
+                        assert.ok(!r.error, `${m}.${n} ${op} ${a} ${b}`);
+                        for (const s of r.result?.steps ?? []) assert.doesNotMatch(fixedStepText(s, r.fx), /\{\w+\}|undefined|NaN/, `${s.key}`);
+                        latexOk(fixedLatex(r), `fixo ${m}.${n} ${op} ${a} ${b}`);
+                    }
+                }
+            }
+        }
+    }
+    setLanguage('pt');
+    assert.equal(analyzeFixed({ m: 3, n: 4, signed: true, op: 'conv', a: 'x', mode: 'rne', overflow: 'sat' }).error, 'operand');
+    assert.equal(analyzeFixed({ m: 40, n: 40, signed: true, op: 'conv', a: '1', mode: 'rne', overflow: 'sat' }).error, 'format');
+    const r = analyzeFixed({ m: 7, n: 8, signed: true, op: 'mul', a: '1.5', b: '0.1', mode: 'rne', overflow: 'sat' });
+    assert.equal(r.result.value, '0.15234375');
+    assert.equal(r.floats.map((f) => f.fmt).join(), 'half,bf16');
 });

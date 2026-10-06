@@ -556,6 +556,7 @@ kbd {
     --c-grs-bg: #fbecc4;
     --series-1: #2a78d6;
     --series-2: #eb6834;
+    --series-3: #1baf7a;
 }
 
 [data-theme='dark'] {
@@ -569,6 +570,7 @@ kbd {
     --c-grs-bg: #3f3418;
     --series-1: #3987e5;
     --series-2: #d95926;
+    --series-3: #199e70;
 }
 
 body {
@@ -892,7 +894,8 @@ button.bit:hover {
 }
 
 .bit.sign { color: var(--c-sign); background: var(--c-sign-bg); }
-.bit.exp { color: var(--c-exp); background: var(--c-exp-bg); }
+.bit.exp, .bit.int { color: var(--c-exp); background: var(--c-exp-bg); }
+.fx-point { align-self: flex-end; padding: 0 1px; font-weight: 700; font-size: 1.2em; line-height: 1; color: var(--ink); }
 .bit.frac { color: var(--c-frac); background: var(--c-frac-bg); }
 .bit.one { font-weight: 600; }
 .bit:not(.one) { opacity: 0.72; }
@@ -905,7 +908,7 @@ button.bit:hover {
 }
 
 .bit-legend .sign { color: var(--c-sign); }
-.bit-legend .exp { color: var(--c-exp); }
+.bit-legend .exp, .bit-legend .int { color: var(--c-exp); }
 .bit-legend .frac { color: var(--c-frac); }
 
 code.c-sign { color: var(--c-sign); }
@@ -1096,6 +1099,7 @@ table.regs td.e {
 .chart path.series { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .chart path.series.s1 { stroke: var(--series-1); }
 .chart path.series.s2 { stroke: var(--series-2); }
+.chart path.series.s3 { stroke: var(--series-3); }
 .chart.bars path.series { fill: var(--series-1); stroke: none; }
 .chart .cross { stroke: var(--muted); stroke-width: 1; }
 .chart .hit { fill: transparent; }
@@ -1121,6 +1125,7 @@ table.regs td.e {
 
 .sw.s1 { background: var(--series-1); }
 .sw.s2 { background: var(--series-2); }
+.sw.s3 { background: var(--series-3); }
 
 .chart .tip {
     position: absolute;

@@ -5,7 +5,7 @@
 import { t } from '../i18n/index.js';
 import { getFormat } from '../fp/formats.js';
 import { flagList } from '../fp/core.js';
-import { stepText, specialText, regLabel, intStepText, modeReason, droppedSummary } from './text.js';
+import { stepText, specialText, regLabel, intStepText, modeReason, droppedSummary, fixedStepText } from './text.js';
 
 export const tex = (s) => String(s ?? '')
     .replace(/\\/g, '\\textbackslash{}')
@@ -175,5 +175,36 @@ export function questionsLatex(qs, withAnswers) {
         out.push(`  \\item ${text}${withAnswers ? ` \\\\ \\textbf{${tex(t('ex.answer'))}:} \\texttt{${tex(q.answer)}}` : ' \\hfill \\underline{\\hspace{4cm}}'}`);
     }
     out.push('\\end{enumerate}', '');
+    return out.join('\n');
+}
+
+/** Ponto fixo: formato, operandos com os bits, passos da conta inteira e comparação com ponto flutuante. */
+export function fixedLatex(r) {
+    const fx = r.fx;
+    const title = r.result ? `${fx.name}: ${t(`fx.op.${r.op}`)}` : `${fx.name}: ${t('fx.op.conv')}`;
+    const out = [...PREAMBLE(title)];
+    const err = (e) => (e ? (e.exact ? tex(t('ui.exact')) : tex(e.rel)) : '-');
+    const binTex = (b) => tt(`${b.sign}${b.sign ? ' ' : ''}${b.int || '0'}${fx.n ? `.${b.frac}` : ''}`);
+    out.push(...table([tex(t('fx.range')), tex(t('fx.step')), tex(t('fx.count'))],
+        [[tex(`${r.range.min} … ${r.range.max}`), tex(`2^−${fx.n} = ${r.range.step}`), tex(r.range.count)]], tex(t('fx.formatSub', { bits: fx.bits, n: fx.n }))));
+    const row = (label, o) => [label, tex(o.text), binTex(o.bin), tt(o.hex), tex(o.raw.toString()), tex(o.value), err(o.err), flagsTex(o.flags)];
+    const rows = [row('a', r.A)];
+    if (r.B) rows.push(row('b', r.B));
+    if (r.result) rows.push([tex(t('ops.result')), r.idealText ? tex(r.idealText.text + (r.idealText.exact ? '' : '…')) : '-', binTex(r.result.bin), tt(r.result.hex),
+        tex(r.result.raw.toString()), tex(r.result.value), err(r.result.err), flagsTex(r.result.flags)]);
+    out.push(...table(['', tex(t('ui.typed')), tex(t('ui.bits')), tex(t('ui.hex')), tex(t('fx.raw')), tex(t('ui.storedValue')), tex(t('ui.relErr')), tex(t('ui.flags'))],
+        rows, tex(title), { resize: true }));
+    if (r.result) {
+        out.push('\\begin{enumerate}');
+        for (const s of r.result.steps) out.push(`  \\item ${texMd(fixedStepText(s, fx))}`);
+        out.push('\\end{enumerate}', '');
+    }
+    if (r.floats.length) {
+        const head = [tex(t('ui.format')), 'a', tex(t('ui.relErr'))];
+        if (r.result) head.push(tex(t('ops.result')), tex(t('ui.relErr')));
+        const frows = [[tex(fx.name), tex(r.A.value), err(r.A.err), ...(r.result ? [tex(r.result.value), err(r.result.err)] : [])]];
+        for (const f of r.floats) frows.push([tex(t(`fmt.${f.fmt}`)), tex(f.a.text), err(f.a.err), ...(f.result ? [tex(f.result.text), err(f.result.err)] : [])]);
+        out.push(...table(head, frows, tex(t('fx.compareSub', { bits: fx.bits }))));
+    }
     return out.join('\n');
 }

@@ -212,12 +212,33 @@ export default {
 <p>When signed, multiplication and division work on the magnitudes and fix the signs at the end (the remainder has the sign of the dividend). Division by zero and overflow follow RISC-V: there is no exception; the quotient of x ÷ 0 has all bits set and the remainder is x; −2^(n−1) ÷ −1 gives the dividend itself and remainder 0.</p>`,
         },
         {
+            id: 'fixed',
+            title: 'Fixed point',
+            html: `
+<p>In binary fixed point the number is an <strong>integer</strong> with an agreed scale factor: in <code>Qm.n</code> (ARM convention) there is 1 sign bit, m integer bits and n fraction bits, in two's complement, and the value is the stored integer divided by 2^n. Unsigned <code>UQm.n</code> has m + n bits. The binary point is not stored anywhere: only the programmer knows where it is.</p>
+<table>
+    <tr><th>Format</th><th>Bits</th><th>Range</th><th>Resolution</th></tr>
+    <tr><td>Q3.4</td><td>8</td><td>−8 to 7.9375</td><td>2^−4 = 0.0625</td></tr>
+    <tr><td>Q0.15</td><td>16</td><td>−1 to 0.99997</td><td>2^−15</td></tr>
+    <tr><td>Q7.8</td><td>16</td><td>−128 to 127.996</td><td>2^−8</td></tr>
+    <tr><td>UQ8.8</td><td>16</td><td>0 to 255.996</td><td>2^−8</td></tr>
+</table>
+<p>The difference from floating point is the spacing: in fixed point the ULP is the same across the whole range, so the <em>absolute</em> rounding error is bounded (half an ULP in RNE) and the <em>relative</em> error grows as the number gets smaller. In Q7.8, 0.001 becomes 0 (100% relative error), while in half, with the same 16 bits, the error is around 4 × 10^−4. For large numbers it is the other way around: 200.7 in UQ8.8 gives 200.69921875; in half it gives 200.75.</p>
+<dl>
+    <dt>Addition and subtraction</dt><dd>They are the ordinary integer addition of the stored values (the same RISC-V <code>add</code>), always exact. The only problem is overflow: 6 + 3 in Q3.4 goes past 7.9375.</dd>
+    <dt>Multiplication</dt><dd>The product of two integers with n fraction bits has 2n fraction bits. It is shifted n bits right, and the bits shifted out decide the rounding, with the same five modes as floating point. In Q7.8, 1.5 × 0.1 gives 0.15234375, because 0.1 had already been stored as 0.1015625.</dd>
+    <dt>Division</dt><dd>The dividend is shifted n bits left before the integer division, so the quotient comes out with n fraction bits. Division by zero saturates at the end of the range with the sign of the dividend (0 ÷ 0 gives 0) and raises OF.</dd>
+    <dt>Overflow</dt><dd>With <strong>saturation</strong> the result stays at the largest (or smallest) representable value, as DSP instructions and the RISC-V P extension do. <strong>Wrapping around</strong> keeps only the low bits, as in ordinary integer addition: 6 + 3 in Q3.4 gives −7. In both cases the OF flag is raised; NX means rounding happened.</dd>
+</dl>
+<p>The comparison table shows the floating point formats with the same number of bits (8 bits: E5M2 and E4M3; 16: half and bf16; 32: single; 64: double), with the same operands and mode. The chart goes through three values per decade, from a quarter of the ULP (which already rounds to zero) up to the largest value of the format, and shows the relative error of each representation.</p>`,
+        },
+        {
             id: 'classroom',
             title: 'Classroom tools',
             html: `
 <dl>
     <dt>Exercises</dt><dd>Random questions of the chosen types: number to bits, bits to number, exponent, result of an operation in a mode, flags, product register at one iteration of multiplication, and quotient and remainder of a division. Answers accept equivalent forms (hexadecimal with or without 0x, any decimal that gives the same bits, flags in any order). <strong>Solution</strong> shows the commented answer and <strong>Open in the simulator</strong> opens the question in the matching view. The same seed gives the same list.</dd>
-    <dt>Export</dt><dd>In each view, produces the tables in LaTeX (to download or copy): bits, fields, modes and formats of the conversion; operands, steps and modes of the operation; the experiment table; the integer arithmetic step table; the exercise list, blank or with answers. Tables use a header with a <code>tabAzul</code> background and white text, <code>\\hline</code>, without booktabs, and require the <code>xcolor</code> (option <code>table</code>) and <code>graphicx</code> packages.</dd>
+    <dt>Export</dt><dd>In each view, produces the tables in LaTeX (to download or copy): bits, fields, modes and formats of the conversion; operands, steps and modes of the operation; the experiment table; the integer arithmetic step table; bits, steps and comparison for fixed point; the exercise list, blank or with answers. Tables use a header with a <code>tabAzul</code> background and white text, <code>\\hline</code>, without booktabs, and require the <code>xcolor</code> (option <code>table</code>) and <code>graphicx</code> packages.</dd>
     <dt>Copy link</dt><dd>Creates an address with the view and the current values (for exercises, the seed and the options).</dd>
 </dl>`,
         },

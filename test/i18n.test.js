@@ -40,8 +40,8 @@ test('toda chave literal usada no código existe', () => {
     for (const f of files(ROOT)) {
         const src = readFileSync(f, 'utf8');
         for (const m of src.matchAll(/\b(?:t|tm)\(\s*'([a-zA-Z][\w.+-]*)'/g)) if (!(m[1] in pt)) missing.add(`${m[1]} (${f.pathname.split('/js/')[1]})`);
-        // Em fp/trace.js, `key` nomeia o passo (traduzido como st.<passo>), não uma chave de tradução.
-        if (!f.pathname.endsWith('/fp/trace.js')) for (const m of src.matchAll(/key: '([a-zA-Z][\w.+-]*)'/g)) if (!(m[1] in pt)) missing.add(`${m[1]} (${f.pathname.split('/js/')[1]})`);
+        // Em fp/trace.js e fx/fixed.js, `key` nomeia o passo (traduzido por text.js), não uma chave de tradução.
+        if (!f.pathname.endsWith('/fp/trace.js') && !f.pathname.endsWith('/fx/fixed.js')) for (const m of src.matchAll(/key: '([a-zA-Z][\w.+-]*)'/g)) if (!(m[1] in pt)) missing.add(`${m[1]} (${f.pathname.split('/js/')[1]})`);
         for (const m of src.matchAll(/\['(exp\.[\w.]+)'/g)) if (!(m[1] in pt)) missing.add(`${m[1]} (${f.pathname.split('/js/')[1]})`);
     }
     assert.deepEqual([...missing], []);
@@ -53,7 +53,7 @@ test('chaves montadas dinamicamente existem', () => {
     for (const m of ROUNDING_MODES) need.push(`mode.${m}`);
     for (const n of FLAG_NAMES) need.push(`flag.${n}`);
     for (const c of FCLASS) need.push(`cls.${c}`);
-    for (const v of ['convert', 'ops', 'exp', 'int', 'ex']) need.push(`view.${v}`);
+    for (const v of ['convert', 'ops', 'exp', 'int', 'fix', 'ex']) need.push(`view.${v}`);
     for (const e of EXPERIMENTS) {
         need.push(`exp.${e.id}.title`, `exp.${e.id}.short`, `exp.${e.id}.desc`);
         for (const p of e.fields) if (p !== 'fmt' && p !== 'mode') need.push(`exp.param.${p}`);
@@ -67,7 +67,9 @@ test('chaves montadas dinamicamente existem', () => {
     for (const q of QUESTION_TYPES) need.push(`q.type.${q}`, `q.ph.${q}`);
     for (const a of ['v1', 'v2', 'booth']) need.push(`int.algo.mul.${a}`, `int.note.mul.${a}`, `q.intmul.${a}`);
     for (const a of ['v1', 'v2', 'nonrestoring']) need.push(`int.algo.div.${a}`, `int.note.div.${a}`);
-    for (const o of ['add', 'sub', 'mul', 'div']) need.push(`int.op.${o}`);
+    for (const o of ['add', 'sub', 'mul', 'div']) need.push(`int.op.${o}`, `fx.op.${o}`);
+    for (const k of ['add', 'sub', 'mul', 'shift', 'div', 'round', 'sat', 'wrap', 'divZero']) need.push(`fx.st.${k}`);
+    need.push('fx.op.conv');
     for (const o of ['add', 'sub', 'mul', 'div', 'sqrt', 'fma']) need.push(`op.${o}`);
     for (const r of ['Mp', 'Mc', 'P', 'x', 'Q', 'D', 'R', 'A']) need.push(`ireg.${r}`);
     for (const s of ['nan', 'inf', 'sqrtNeg', 'zero', 'divZero']) need.push(`st.special.${s}`);

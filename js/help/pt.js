@@ -213,12 +213,33 @@ export default {
 <p>Com sinal, multiplicação e divisão trabalham com as magnitudes e ajustam os sinais no fim (o resto tem o sinal do dividendo). Divisão por zero e estouro seguem o RISC-V: não há exceção; o quociente de x ÷ 0 tem todos os bits em 1 e o resto é x; −2^(n−1) ÷ −1 dá o próprio dividendo e resto 0.</p>`,
         },
         {
+            id: 'fixed',
+            title: 'Ponto fixo',
+            html: `
+<p>Em ponto fixo binário o número é um <strong>inteiro</strong> com um fator de escala combinado: em <code>Qm.n</code> (convenção da ARM) há 1 bit de sinal, m bits inteiros e n bits de fração, em complemento de 2, e o valor é o inteiro guardado dividido por 2^n. Sem sinal, <code>UQm.n</code> tem m + n bits. O ponto binário não está guardado em lugar nenhum: só o programador sabe onde ele fica.</p>
+<table>
+    <tr><th>Formato</th><th>Bits</th><th>Faixa</th><th>Resolução</th></tr>
+    <tr><td>Q3.4</td><td>8</td><td>−8 a 7,9375</td><td>2^−4 = 0,0625</td></tr>
+    <tr><td>Q0.15</td><td>16</td><td>−1 a 0,99997</td><td>2^−15</td></tr>
+    <tr><td>Q7.8</td><td>16</td><td>−128 a 127,996</td><td>2^−8</td></tr>
+    <tr><td>UQ8.8</td><td>16</td><td>0 a 255,996</td><td>2^−8</td></tr>
+</table>
+<p>A diferença para o ponto flutuante está no espaçamento: no ponto fixo o ULP é o mesmo em toda a faixa, então o erro <em>absoluto</em> de arredondamento é limitado (meio ULP em RNE) e o erro <em>relativo</em> cresce quando o número diminui. Em Q7.8, 0,001 vira 0 (erro relativo de 100%), enquanto em half, com os mesmos 16 bits, o erro fica em torno de 4 × 10^−4. Para números grandes a situação se inverte: 200,7 em UQ8.8 dá 200,69921875; em half dá 200,75.</p>
+<dl>
+    <dt>Soma e subtração</dt><dd>São a soma inteira comum dos valores guardados (o mesmo <code>add</code> do RISC-V), sempre exatas. O único problema é o estouro: 6 + 3 em Q3.4 passa de 7,9375.</dd>
+    <dt>Multiplicação</dt><dd>O produto de dois inteiros com n bits de fração tem 2n bits de fração. Ele é deslocado n bits para a direita, e os bits que saem decidem o arredondamento, com os mesmos cinco modos do ponto flutuante. Em Q7.8, 1,5 × 0,1 dá 0,15234375, porque o 0,1 já tinha sido guardado como 0,1015625.</dd>
+    <dt>Divisão</dt><dd>O dividendo é deslocado n bits para a esquerda antes da divisão inteira, para o quociente sair com n bits de fração. A divisão por zero satura no extremo com o sinal do dividendo (0 ÷ 0 dá 0) e sinaliza OF.</dd>
+    <dt>Estouro</dt><dd>Com <strong>saturação</strong> o resultado fica no maior (ou menor) valor representável, como fazem as instruções de DSP e a extensão P do RISC-V. <strong>Dando a volta</strong>, ficam só os bits de baixo, como na soma inteira comum: 6 + 3 em Q3.4 dá −7. Nos dois casos a flag OF acende; NX indica que houve arredondamento.</dd>
+</dl>
+<p>A tabela de comparação mostra os formatos de ponto flutuante com o mesmo número de bits (8 bits: E5M2 e E4M3; 16: half e bf16; 32: single; 64: double), com os mesmos operandos e modo. O gráfico percorre três valores por década, de um quarto do ULP (que já arredonda para zero) até o maior valor do formato, e mostra o erro relativo de cada representação.</p>`,
+        },
+        {
             id: 'classroom',
             title: 'Recursos para aula',
             html: `
 <dl>
     <dt>Exercícios</dt><dd>Questões sorteadas dos tipos escolhidos: número para bits, bits para número, expoente, resultado de uma operação em um modo, flags, registro do produto em uma iteração da multiplicação e quociente e resto de uma divisão. As respostas aceitam formas equivalentes (hexadecimal com ou sem 0x, qualquer decimal que dê os mesmos bits, flags em qualquer ordem). <strong>Solução</strong> mostra a resposta comentada e <strong>Abrir no simulador</strong> abre a questão na vista correspondente. A mesma semente gera a mesma lista.</dd>
-    <dt>Exportar</dt><dd>Em cada vista, gera as tabelas em LaTeX (para baixar ou copiar): bits, campos, modos e formatos da conversão; operandos, passos e modos da operação; a tabela do experimento; a tabela de passos da aritmética inteira; a lista de exercícios em branco ou com gabarito. As tabelas usam cabeçalho com fundo <code>tabAzul</code> e texto branco, <code>\\hline</code>, sem booktabs, e requerem os pacotes <code>xcolor</code> (opção <code>table</code>) e <code>graphicx</code>.</dd>
+    <dt>Exportar</dt><dd>Em cada vista, gera as tabelas em LaTeX (para baixar ou copiar): bits, campos, modos e formatos da conversão; operandos, passos e modos da operação; a tabela do experimento; a tabela de passos da aritmética inteira; bits, passos e comparação do ponto fixo; a lista de exercícios em branco ou com gabarito. As tabelas usam cabeçalho com fundo <code>tabAzul</code> e texto branco, <code>\\hline</code>, sem booktabs, e requerem os pacotes <code>xcolor</code> (opção <code>table</code>) e <code>graphicx</code>.</dd>
     <dt>Copiar link</dt><dd>Gera um endereço com a vista e os valores atuais (no exercício, a semente e as opções).</dd>
 </dl>`,
         },
