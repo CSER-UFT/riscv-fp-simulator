@@ -1322,3 +1322,71 @@ ol.questions p {
     font-size: 0.78rem;
     color: var(--faint);
 }
+
+/* Explicação dos modos de arredondamento */
+
+.xbits {
+    background: var(--panel-2);
+    border-radius: 6px;
+    padding: 10px 12px;
+    overflow-x: auto;
+}
+
+.xb-line {
+    font-size: 1rem;
+    white-space: nowrap;
+    letter-spacing: 0.04em;
+}
+
+.xb-kept {
+    color: var(--c-frac);
+}
+
+.xb-int {
+    color: var(--c-sign);
+    font-weight: 600;
+}
+
+.xb-cut {
+    color: var(--warn);
+    font-weight: 700;
+    margin: 0 3px;
+}
+
+.xb-drop {
+    color: var(--faint);
+}
+
+.xb-g,
+.xb-r {
+    color: var(--c-grs);
+    background: var(--c-grs-bg);
+    border-radius: 3px;
+    padding: 0 1px;
+}
+
+.xb-s {
+    text-decoration: underline dotted var(--c-grs);
+    text-underline-offset: 3px;
+}
+
+.xb-exp {
+    color: var(--muted);
+}
+
+.xb-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin-top: 6px;
+    font-family: var(--sans);
+    font-size: 0.78rem;
+}
+
+table.why td:last-child {
+    font-size: 0.87rem;
+}
+
+table.why th:first-child {
+    width: 52px;
+}

@@ -108,12 +108,79 @@ export function analyzeConversion(fmtId, text, mode, opts = {}) {
         return { fmt: id, ...describe(id, r.bits), flags: r.flags, err: x ? errors(FORMATS[id], x, r.bits) : null };
     });
     res.neighbors = x && x.N !== 0n ? neighbors(fmtId, x, opts) : null;
+    res.explain = x && x.N !== 0n ? roundingExplain(fmtId, x, opts) : null;
     res.ints = Object.keys(core.INT_TYPES).map((type) => {
         const r = core.toInteger(fmtId, main.bits, type, mode);
         return { type, value: r.value, flags: r.flags };
     });
     return res;
 }
+
+/**
+ * Dados para explicar o arredondamento de um racional x em cada modo:
+ *   o significando de |x| em binário, com o corte depois do bit p (bits mantidos e os primeiros descartados);
+ *   os bits guard, round e sticky e a posição de x entre os vizinhos (fração de um ULP);
+ *   os dois vizinhos (lo, de menor magnitude, e hi, de maior), a paridade de cada um e o resultado de cada
+ *   modo. Também cobre o estouro (hi é infinito, ou NaN no E4M3) e os subnormais.
+ */
+export function roundingExplain(fmtId, x, opts = {}) {
+    const f = getFormat(fmtId);
+    if (x.N === 0n) return null;
+    const p = f.p;
+    // Expoente do bit mais alto; abaixo de emin o corte fica fixo (subnormais).
+    const e = core.floorLog2(x.N, x.D);
+    const E = Math.max(e, f.emin);
+    const scale = p - 1 - E;
+    const num = scale >= 0 ? x.N << BigInt(scale) : x.N;
+    const den = scale >= 0 ? x.D : x.D << BigInt(-scale);
+    const q = num / den;
+    let rem = num % den;
+    // Primeiros bits descartados (divisão longa) e se ainda sobra algo depois deles.
+    let dropped = '';
+    for (let i = 0; i < 24 && rem !== 0n; i++) {
+        rem *= 2n;
+        dropped += rem >= den ? '1' : '0';
+        if (rem >= den) rem -= den;
+    }
+    const more = rem !== 0n;
+    const exact = dropped === '';
+    const G = dropped[0] === '1' ? 1 : 0;
+    const R = dropped[1] === '1' ? 1 : 0;
+    const S = dropped.slice(2).includes('1') || more ? 1 : 0;
+    const subnormal = e < f.emin;
+    const kept = q.toString(2).padStart(p, '0');
+
+    const by = {};
+    for (const m of ROUNDING_MODES) by[m] = core.fromRational(f, x.sign, x.N, x.D, m, { ...opts, sat: false }).bits;
+    const loBits = by.rtz;
+    const hiBits = x.sign ? by.rdn : by.rup;
+    const lsb = (bits) => {
+        const v = core.decode(f, bits);
+        return core.isFinite(v) ? Number(v.frac & 1n) : null;
+    };
+    const label = (bits) => {
+        const v = core.decode(f, bits);
+        if (v.cls === 'inf') return v.sign ? '-∞' : '+∞';
+        if (v.cls === 'nan') return 'NaN';
+        return displayText(fmtId, bits);
+    };
+    // Posição de x entre lo (0) e hi (1), exata: tie quando é 1/2.
+    const nb = exact ? null : neighbors(fmtId, x, opts);
+    const r = nb ? nb.x : 0;
+    const half = G === 1 && R === 0 && S === 0;
+    const overflow = !exact && !core.isFinite(core.decode(f, hiBits));
+    return {
+        fmt: f, sign: x.sign, exact, subnormal, overflow,
+        E, kept, dropped, more, G, R, S, half,
+        r, dLo: num4(r), dHi: num4(1 - r),
+        lo: { bits: loBits, hex: hex(fmtId, loBits), text: label(loBits), lsb: lsb(loBits) },
+        hi: { bits: hiBits, hex: hex(fmtId, hiBits), text: label(hiBits), lsb: lsb(hiBits) },
+        modes: ROUNDING_MODES.map((m) => ({ mode: m, bits: by[m], text: label(by[m]), hex: hex(fmtId, by[m]), side: exact ? 'exact' : by[m] === loBits ? 'lo' : 'hi' })),
+    };
+}
+
+/** Número com até 4 algarismos significativos, sem zeros finais. */
+const num4 = (v) => String(Number(v.toPrecision(4)));
 
 /**
  * Vizinhos representáveis de um racional x, para a reta numérica: os dois mais próximos (abaixo e acima) e
@@ -222,6 +289,7 @@ export function analyzeOperation(op, fmtId, texts, mode, opts = {}) {
         res.unfused = { product: describe(fmtId, p.bits), productFlags: p.flags, ...describe(fmtId, s.bits), flags: s.flags | p.flags, err: exact ? errors(f, exact, s.bits) : null };
     }
     res.neighbors = exact && exact.N !== 0n ? neighbors(fmtId, exact, opts) : null;
+    res.explain = exact && exact.N !== 0n ? roundingExplain(fmtId, exact, opts) : null;
     return res;
 }
 

@@ -13,6 +13,7 @@ import { ARITY } from '../fp/core.js';
 import * as core from '../fp/core.js';
 import { esc, md, tm, formatOptions, modeOptions, flagsHtml, bitsHtml, regHtml, options, fmtName, modeName } from './common.js';
 import { numberLineHtml } from './numberline.js';
+import { explainHtml } from './explain.js';
 
 export const OPS = ['add', 'sub', 'mul', 'div', 'sqrt', 'fma'];
 
@@ -137,6 +138,7 @@ function output(st) {
                 </table>
             </section>
             ${o.neighbors ? `<section class="card span2"><h2>${esc(t('ui.numberLine'))} <span class="sub">${esc(t('ops.nlSub'))}</span></h2>${numberLineHtml(o.neighbors, { xLabel: t('ops.exactShort') })}</section>` : ''}
+            ${o.explain ? explainHtml(o.explain, st.mode) : ''}
             <section class="card span2">
                 <h2>${esc(t('conv.modesTitle'))}</h2>
                 <div class="scroll"><table class="data"><tr><th>${esc(t('ui.mode'))}</th><th></th><th>${esc(t('ui.bits'))}</th><th>${esc(t('ui.value'))}</th><th>${esc(t('ui.relErr'))}</th><th>${esc(t('ui.flags'))}</th></tr>${modes}</table></div>

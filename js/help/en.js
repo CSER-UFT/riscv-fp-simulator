@@ -63,18 +63,73 @@ export default {
             id: 'rounding',
             title: 'The five rounding modes',
             html: `
-<p>When the exact value x is not representable, it lies between two representable neighbors. The rounding mode picks one of them:</p>
+<h3>Why round</h3>
+<p>A format with precision p keeps only p significand bits. Almost every real number (0.1, 1/3, √2, the exact result of a division) needs more bits, often infinitely many. Between two neighboring representable numbers there is nothing representable: the exact value x falls between a neighbor with smaller magnitude, which we call <strong>lo</strong>, and the next one, <strong>hi</strong>. The distance between them is one <strong>ULP</strong> (<em>unit in the last place</em>): the weight of the last kept bit. Rounding means choosing lo or hi, and the <strong>rounding mode</strong> is the rule for that choice.</p>
+<p>Written in binary, x has its significand cut after bit p. The bits before the cut are exactly lo (the truncation). The bits after the cut tell where x lies between lo and hi: if the first of them is 0, x is in the lower half; if it is 1 and all the others are 0, x is exactly halfway; if it is 1 and some later bit is 1, x is in the upper half. Choosing hi means adding 1 to the last kept bit.</p>
+<p>In the Conversion view, the <strong>How each mode decides</strong> panel shows this cut for the typed number, the discarded fraction of an ULP and one sentence per mode with the numbers of the case. The same panel appears in Operations, for the exact result.</p>
+
+<h3>The integer analogy</h3>
+<p>The modes are the same as rounding to an integer, which is the case with ULP = 1. The table shows the effect of each:</p>
 <table>
-    <tr><th>RISC-V</th><th>IEEE 754</th><th>Picks</th></tr>
-    <tr><td><code>rne</code> (000)</td><td>roundTiesToEven</td><td>the nearest; on a tie, the one whose least significant bit is 0 (even). This is the default.</td></tr>
-    <tr><td><code>rtz</code> (001)</td><td>roundTowardZero</td><td>the one with smaller magnitude (truncates)</td></tr>
-    <tr><td><code>rdn</code> (010)</td><td>roundTowardNegative</td><td>the smaller one (toward −∞)</td></tr>
-    <tr><td><code>rup</code> (011)</td><td>roundTowardPositive</td><td>the larger one (toward +∞)</td></tr>
-    <tr><td><code>rmm</code> (100)</td><td>roundTiesToAway</td><td>the nearest; on a tie, the one with larger magnitude</td></tr>
+    <tr><th>x</th><th>RNE</th><th>RTZ</th><th>RDN</th><th>RUP</th><th>RMM</th></tr>
+    <tr><td>2.3</td><td>2</td><td>2</td><td>2</td><td>3</td><td>2</td></tr>
+    <tr><td>2.5</td><td>2</td><td>2</td><td>2</td><td>3</td><td>3</td></tr>
+    <tr><td>2.7</td><td>3</td><td>2</td><td>2</td><td>3</td><td>3</td></tr>
+    <tr><td>3.5</td><td>4</td><td>3</td><td>3</td><td>4</td><td>4</td></tr>
+    <tr><td>−2.5</td><td>−2</td><td>−2</td><td>−3</td><td>−2</td><td>−3</td></tr>
+    <tr><td>−2.7</td><td>−3</td><td>−2</td><td>−3</td><td>−2</td><td>−3</td></tr>
 </table>
-<p>In RISC-V, the mode comes in the rm field of each floating point instruction; the value 111 (<code>dyn</code>) uses the mode kept in the frm field of the fcsr register.</p>
-<p>The <strong>number line</strong> shows x, its two nearest neighbors (and one more on each side), the midpoint between them and, below each neighbor, the modes that choose it. With RNE, the error is at most half an ULP; with the directed modes, up to one ULP. The RNE tie rule avoids bias: on average, half of the ties go up and half go down.</p>
-<p>Examples to try: <code>16777217</code> in single (exact tie between 16777216 and 16777218); <code>-0.1</code> in RDN and RUP (for negative numbers, rounding down moves away from zero); <code>1e39</code> in single (overflow: infinity in RNE, the largest finite in RTZ).</p>`,
+<p>In binary, the only difference is that the "decimal place" is a bit and a tie happens when the discarded part is exactly 1000…0.</p>
+
+<h3>Each mode</h3>
+<dl>
+    <dt>RNE: to nearest, ties to even (<code>rne</code>, rm = 000)</dt>
+    <dd>Picks the neighbor nearest to x. On an exact tie, picks the one ending in bit 0 (the "even" one). It is the default mode of IEEE 754 and RISC-V, the only one programs normally use. The error is at most half an ULP, that is, a relative error of at most 2^−p (the <em>unit roundoff</em>, half the machine epsilon). Ties to even avoid bias: half the ties go up and half go down. Rounding 0.5, 1.5, 2.5 and 3.5 to integers, RNE gives 0, 2, 2 and 4 (sum 8, equal to the exact sum); always rounding ties up would give 1, 2, 3 and 4 (sum 10). In a loop with millions of additions, that bias accumulates.</dd>
+    <dt>RTZ: toward zero (<code>rtz</code>, rm = 001)</dt>
+    <dd>Drops the bits after the cut without looking at them: the result is always lo, the neighbor with smaller magnitude. It is the simplest in hardware. The error is less than one ULP and the result is never larger in magnitude than the exact one. It is the rule of floating point to integer conversion in C, <code>(int)x</code>, which the compiler translates to <code>fcvt.w.s</code> with <code>rtz</code>. On overflow it gives the largest finite, never infinity.</dd>
+    <dt>RDN: down, toward −∞ (<code>rdn</code>, rm = 010)</dt>
+    <dd>Picks the smaller neighbor (to the left on the line). For positive x it is the same as truncating (lo); for negative x it moves away from zero (hi, the more negative one). The result is never larger than the exact one.</dd>
+    <dt>RUP: up, toward +∞ (<code>rup</code>, rm = 011)</dt>
+    <dd>Picks the larger neighbor. For positive x it moves away from zero (hi); for negative x it truncates (lo). The result is never smaller than the exact one. RDN and RUP together are the basis of <strong>interval arithmetic</strong>: computing the lower bound with RDN and the upper bound with RUP, the true value is guaranteed to lie between the two.</dd>
+    <dt>RMM: to nearest, ties away from zero (<code>rmm</code>, rm = 100)</dt>
+    <dd>Like RNE, but on a tie it picks the one with larger magnitude (hi). It is "school" rounding (2.5 becomes 3 and −2.5 becomes −3). It entered IEEE 754 in 2008, mainly for the decimal formats (commercial computations); in binary it is rarely used, but RISC-V offers it.</dd>
+</dl>
+<p>In RISC-V, the mode comes in the rm field of each floating point instruction (for example, <code>fadd.s fa0, fa1, fa2, rtz</code>); the value 111 (<code>dyn</code>), which the assembler uses when the mode is omitted, takes the mode kept in the frm field of the fcsr register, changed with <code>fsrm</code>.</p>
+
+<h3>The rule by the G, R and S bits</h3>
+<p>The hardware does not keep every discarded bit: it keeps the <strong>guard</strong> (G, the first one), the <strong>round</strong> (R, the second) and the <strong>sticky</strong> (S, the OR of all the others). With them and the sign, each mode decides whether to add 1 to the truncated significand:</p>
+<table>
+    <tr><th>G R S</th><th>Discarded part</th><th>RNE</th><th>RMM</th><th>RTZ</th><th>RDN</th><th>RUP</th></tr>
+    <tr><td>0 0 0</td><td>zero (exact)</td><td>keep</td><td>keep</td><td>keep</td><td>keep</td><td>keep</td></tr>
+    <tr><td>0 x x</td><td>less than half</td><td>keep</td><td>keep</td><td>keep</td><td rowspan="3">add 1 if x &lt; 0</td><td rowspan="3">add 1 if x &gt; 0</td></tr>
+    <tr><td>1 0 0</td><td>exactly half</td><td>add 1 if the last bit is 1</td><td>add 1</td><td>keep</td></tr>
+    <tr><td>1 with R or S = 1</td><td>more than half</td><td>add 1</td><td>add 1</td><td>keep</td></tr>
+</table>
+<p>Why three bits are enough: G tells whether the discarded part is below or above half an ULP; R and S together tell whether it is exactly half an ULP (a tie) or slightly more. R is needed only because, after a subtraction, normalization may shift the result one place to the left, and then G becomes the last kept bit and R becomes the new G. Adding 1 to the significand may produce a carry (1.111…1 + 1 = 10.000…0): the result is shifted one place right and the exponent grows by 1; this may lead to overflow.</p>
+
+<h3>Properties</h3>
+<ul>
+    <li><strong>Maximum error</strong>: half an ULP in the nearest modes (RNE, RMM) and less than one ULP in the directed ones (RTZ, RDN, RUP).</li>
+    <li><strong>Symmetry</strong>: RNE, RMM and RTZ are symmetric, rounding −x gives −(rounding x). RDN and RUP are not: RDN(−x) = −RUP(x).</li>
+    <li><strong>Monotonicity</strong>: in every mode, if x ≤ y, then rounding x ≤ rounding y.</li>
+    <li><strong>Exact result</strong>: when x is representable, every mode gives x, and the NX flag is not set.</li>
+    <li><strong>Sign of zero</strong>: when the exact sum is zero (x − x), the result is +0 in every mode except RDN, which gives −0.</li>
+</ul>
+
+<h3>Overflow and tiny values</h3>
+<p>On overflow, the exact value exceeds the largest finite. The nearest modes give infinity; RTZ gives the largest finite; RDN gives the largest finite for positives and −∞ for negatives; RUP, the opposite. In E4M3, which has no infinity, NaN takes the place of infinity (or the largest finite, with the saturate option). On the other end, a tiny value may round to zero, to the smallest subnormal or to the smallest normal, depending on the mode: type <code>1e-46</code> in single and compare RNE (zero) with RUP (the smallest subnormal).</p>
+
+<h3>Double rounding</h3>
+<p>Rounding twice (first to a wider format, then to the narrower one) can give a different result from rounding once. Example: x = 1 + 2^−24 + 2^−60, typed as <code>0x1.000001000000001p0</code>. Directly to single, x is slightly above the midpoint between 1 and the next neighbor, and RNE gives <code>0x3F800001</code>. Going through double first, the 2^−60 is lost (double has 52 fraction bits) and exactly the midpoint remains; the tie goes to even, and the final result is 1 (<code>0x3F800000</code>). This is why fmadd, with a single rounding, can differ from fmul followed by fadd, and why compilers are careful when computing in more precision than requested.</p>
+
+<h3>Things to try</h3>
+<ul>
+    <li><code>16777217</code> in single: exact tie between 16777216 and 16777218; RNE keeps the even one (16777216) and RMM the one with larger magnitude.</li>
+    <li><code>0.1</code> and <code>-0.1</code> in RDN and RUP: for negatives, "down" moves away from zero.</li>
+    <li><code>1e39</code> in single: overflow; compare RNE (infinity) with RTZ (the largest finite).</li>
+    <li><code>470</code> and <code>464</code> in E4M3: overflow to NaN and a tie that stays at 448 (the largest finite is even).</li>
+    <li>In Operations, the <em>tie</em> example (1 + 2^−24 in single) and the <em>sticky</em> example (1 + 2^−27).</li>
+</ul>`,
         },
         {
             id: 'flags',

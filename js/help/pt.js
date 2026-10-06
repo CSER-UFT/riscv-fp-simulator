@@ -64,18 +64,73 @@ export default {
             id: 'rounding',
             title: 'Os cinco modos de arredondamento',
             html: `
-<p>Quando o valor exato x não é representável, ele fica entre dois vizinhos representáveis. O modo de arredondamento escolhe um deles:</p>
+<h3>Por que arredondar</h3>
+<p>Um formato com precisão p só guarda p bits de significando. Quase todo número real (0,1, 1/3, √2, o resultado exato de uma divisão) precisa de mais bits, muitas vezes infinitos. Entre dois números representáveis vizinhos não há nada representável: o valor exato x cai entre um vizinho de menor magnitude, que chamaremos de <strong>lo</strong>, e o seguinte, <strong>hi</strong>. A distância entre eles é um <strong>ULP</strong> (<em>unit in the last place</em>): o peso do último bit mantido. Arredondar é escolher lo ou hi, e o <strong>modo de arredondamento</strong> é a regra dessa escolha.</p>
+<p>Escrito em binário, x tem o significando cortado depois do bit p. Os bits antes do corte são exatamente lo (o truncamento). Os bits depois do corte dizem onde x está entre lo e hi: se o primeiro deles é 0, x está na metade de baixo; se é 1 e todos os outros são 0, x está exatamente no meio; se é 1 e há outro 1 depois, x está na metade de cima. Escolher hi é somar 1 no último bit mantido.</p>
+<p>Na vista de Conversão, o painel <strong>Como cada modo decide</strong> mostra esse corte para o número digitado, a fração de ULP descartada e uma frase por modo com os números do caso. O mesmo painel aparece nas Operações, para o resultado exato.</p>
+
+<h3>A analogia com inteiros</h3>
+<p>Os modos são os mesmos de arredondar para inteiro, que é o caso com ULP = 1. A tabela mostra o efeito de cada um:</p>
 <table>
-    <tr><th>RISC-V</th><th>IEEE 754</th><th>Escolhe</th></tr>
-    <tr><td><code>rne</code> (000)</td><td>roundTiesToEven</td><td>o mais próximo; no empate, o de bit menos significativo 0 (par). É o padrão.</td></tr>
-    <tr><td><code>rtz</code> (001)</td><td>roundTowardZero</td><td>o de menor magnitude (trunca)</td></tr>
-    <tr><td><code>rdn</code> (010)</td><td>roundTowardNegative</td><td>o menor (em direção a −∞)</td></tr>
-    <tr><td><code>rup</code> (011)</td><td>roundTowardPositive</td><td>o maior (em direção a +∞)</td></tr>
-    <tr><td><code>rmm</code> (100)</td><td>roundTiesToAway</td><td>o mais próximo; no empate, o de maior magnitude</td></tr>
+    <tr><th>x</th><th>RNE</th><th>RTZ</th><th>RDN</th><th>RUP</th><th>RMM</th></tr>
+    <tr><td>2,3</td><td>2</td><td>2</td><td>2</td><td>3</td><td>2</td></tr>
+    <tr><td>2,5</td><td>2</td><td>2</td><td>2</td><td>3</td><td>3</td></tr>
+    <tr><td>2,7</td><td>3</td><td>2</td><td>2</td><td>3</td><td>3</td></tr>
+    <tr><td>3,5</td><td>4</td><td>3</td><td>3</td><td>4</td><td>4</td></tr>
+    <tr><td>−2,5</td><td>−2</td><td>−2</td><td>−3</td><td>−2</td><td>−3</td></tr>
+    <tr><td>−2,7</td><td>−3</td><td>−2</td><td>−3</td><td>−2</td><td>−3</td></tr>
 </table>
-<p>No RISC-V, o modo vem no campo rm de cada instrução de ponto flutuante; o valor 111 (<code>dyn</code>) usa o modo guardado no campo frm do registrador fcsr.</p>
-<p>A <strong>reta numérica</strong> mostra x, os dois vizinhos mais próximos (e mais um de cada lado), o ponto médio entre eles e, abaixo de cada vizinho, os modos que o escolhem. Com RNE, o erro é no máximo meio ULP; com os modos dirigidos, até um ULP. O empate do RNE evita o viés: em média, metade dos empates sobe e metade desce.</p>
-<p>Exemplos para testar: <code>16777217</code> em single (empate exato entre 16777216 e 16777218); <code>-0.1</code> em RDN e RUP (para números negativos, para baixo afasta do zero); <code>1e39</code> em single (estouro: infinito em RNE, o maior finito em RTZ).</p>`,
+<p>Em binário, o que muda é só que a "casa decimal" é um bit e o empate acontece quando a parte descartada é exatamente 1000…0.</p>
+
+<h3>Cada modo</h3>
+<dl>
+    <dt>RNE: ao mais próximo, empate para o par (<code>rne</code>, rm = 000)</dt>
+    <dd>Escolhe o vizinho mais próximo de x. No empate exato, escolhe o que termina em bit 0 (o "par"). É o modo padrão da IEEE 754 e do RISC-V, o único que os programas normalmente usam. O erro é no máximo meio ULP, ou seja, um erro relativo de no máximo 2^−p (a <em>unidade de arredondamento</em>, metade do épsilon da máquina). O empate para o par evita viés: metade dos empates sobe e metade desce. Arredondando 0,5, 1,5, 2,5 e 3,5 para inteiro, RNE dá 0, 2, 2 e 4 (soma 8, igual à soma exata); arredondar o empate sempre para cima daria 1, 2, 3 e 4 (soma 10). Em um laço com milhões de somas, esse viés se acumula.</dd>
+    <dt>RTZ: em direção a zero (<code>rtz</code>, rm = 001)</dt>
+    <dd>Descarta os bits depois do corte, sem olhar para eles: o resultado é sempre lo, o vizinho de menor magnitude. É o mais simples em hardware. O erro é menor que um ULP e o resultado nunca é maior em magnitude que o exato. É a regra da conversão de ponto flutuante para inteiro em C, <code>(int)x</code>, que o compilador traduz para <code>fcvt.w.s</code> com <code>rtz</code>. Num estouro, dá o maior finito, nunca infinito.</dd>
+    <dt>RDN: para baixo, em direção a −∞ (<code>rdn</code>, rm = 010)</dt>
+    <dd>Escolhe o vizinho menor (à esquerda na reta). Para x positivo é o mesmo que truncar (lo); para x negativo é afastar do zero (hi, o mais negativo). O resultado nunca é maior que o exato.</dd>
+    <dt>RUP: para cima, em direção a +∞ (<code>rup</code>, rm = 011)</dt>
+    <dd>Escolhe o vizinho maior. Para x positivo é afastar do zero (hi); para x negativo é truncar (lo). O resultado nunca é menor que o exato. RDN e RUP juntos dão a base da <strong>aritmética intervalar</strong>: calculando o limite inferior com RDN e o superior com RUP, o valor verdadeiro fica garantidamente entre os dois.</dd>
+    <dt>RMM: ao mais próximo, empate longe do zero (<code>rmm</code>, rm = 100)</dt>
+    <dd>Como RNE, mas no empate escolhe o de maior magnitude (hi). É o arredondamento "da escola" (2,5 vira 3 e −2,5 vira −3). Entrou na IEEE 754 em 2008, principalmente para os formatos decimais (contas comerciais); em binário é pouco usado, mas o RISC-V oferece.</dd>
+</dl>
+<p>No RISC-V, o modo vem no campo rm de cada instrução de ponto flutuante (por exemplo, <code>fadd.s fa0, fa1, fa2, rtz</code>); o valor 111 (<code>dyn</code>), que é o que o montador usa quando o modo é omitido, usa o modo guardado no campo frm do registrador fcsr, alterado com <code>fsrm</code>.</p>
+
+<h3>A regra pelos bits G, R e S</h3>
+<p>O hardware não guarda todos os bits descartados: guarda o <strong>guard</strong> (G, o primeiro), o <strong>round</strong> (R, o segundo) e o <strong>sticky</strong> (S, o OU de todos os demais). Com eles e com o sinal, cada modo decide se soma 1 ao significando truncado:</p>
+<table>
+    <tr><th>G R S</th><th>Parte descartada</th><th>RNE</th><th>RMM</th><th>RTZ</th><th>RDN</th><th>RUP</th></tr>
+    <tr><td>0 0 0</td><td>zero (exato)</td><td>mantém</td><td>mantém</td><td>mantém</td><td>mantém</td><td>mantém</td></tr>
+    <tr><td>0 x x</td><td>menos da metade</td><td>mantém</td><td>mantém</td><td>mantém</td><td rowspan="3">soma 1 se x &lt; 0</td><td rowspan="3">soma 1 se x &gt; 0</td></tr>
+    <tr><td>1 0 0</td><td>exatamente a metade</td><td>soma 1 se o último bit é 1</td><td>soma 1</td><td>mantém</td></tr>
+    <tr><td>1 com R ou S = 1</td><td>mais da metade</td><td>soma 1</td><td>soma 1</td><td>mantém</td></tr>
+</table>
+<p>Por que três bits bastam: G diz se a parte descartada é menor ou maior que meio ULP; R e S juntos dizem se ela é exatamente meio ULP (empate) ou um pouco mais. O R só é necessário porque, depois de uma subtração, a normalização pode deslocar o resultado uma posição para a esquerda, e aí o G vira o último bit mantido e o R passa a ser o novo G. Somar 1 ao significando pode gerar vai um (1,111…1 + 1 = 10,000…0): o resultado é deslocado uma posição para a direita e o expoente aumenta 1; isso pode levar ao estouro.</p>
+
+<h3>Propriedades</h3>
+<ul>
+    <li><strong>Erro máximo</strong>: meio ULP nos modos ao mais próximo (RNE, RMM) e menos de um ULP nos dirigidos (RTZ, RDN, RUP).</li>
+    <li><strong>Simetria</strong>: RNE, RMM e RTZ são simétricos, arredondar −x dá −(arredondar x). RDN e RUP não são: RDN(−x) = −RUP(x).</li>
+    <li><strong>Monotonia</strong>: em todos os modos, se x ≤ y, então arredondar x ≤ arredondar y.</li>
+    <li><strong>Resultado exato</strong>: quando x é representável, todos os modos dão x, e a flag NX não é ligada.</li>
+    <li><strong>Sinal de zero</strong>: quando a soma exata é zero (x − x), o resultado é +0 em todos os modos, exceto RDN, que dá −0.</li>
+</ul>
+
+<h3>Estouro e valores minúsculos</h3>
+<p>No estouro, o valor exato passa do maior finito. Os modos ao mais próximo dão infinito; RTZ dá o maior finito; RDN dá o maior finito para positivos e −∞ para negativos; RUP, o contrário. No E4M3, que não tem infinito, o lugar do infinito é ocupado pelo NaN (ou pelo maior finito, com a opção de saturar). Do outro lado, um valor minúsculo pode arredondar para zero, para o menor subnormal ou para o menor normal, conforme o modo: digite <code>1e-46</code> em single e compare RNE (zero) com RUP (o menor subnormal).</p>
+
+<h3>Arredondamento duplo</h3>
+<p>Arredondar duas vezes (primeiro para um formato maior, depois para o menor) pode dar um resultado diferente de arredondar uma vez só. Exemplo: x = 1 + 2^−24 + 2^−60, digitado como <code>0x1.000001000000001p0</code>. Direto para single, x está um pouco acima do meio entre 1 e o vizinho seguinte, e RNE dá <code>0x3F800001</code>. Passando antes por double, o 2^−60 se perde (double tem 52 bits de fração) e sobra exatamente o meio; o empate vai para o par, e o resultado final é 1 (<code>0x3F800000</code>). É por isso que o fmadd, com um único arredondamento, pode dar resultado diferente de fmul seguida de fadd, e que os compiladores tomam cuidado ao calcular em precisão maior que a pedida.</p>
+
+<h3>Para testar</h3>
+<ul>
+    <li><code>16777217</code> em single: empate exato entre 16777216 e 16777218; RNE fica com o par (16777216) e RMM com o de maior magnitude.</li>
+    <li><code>0.1</code> e <code>-0.1</code> em RDN e RUP: para negativos, "para baixo" afasta do zero.</li>
+    <li><code>1e39</code> em single: estouro; compare RNE (infinito) com RTZ (o maior finito).</li>
+    <li><code>470</code> e <code>464</code> em E4M3: estouro para NaN e empate que fica em 448 (o maior finito é par).</li>
+    <li>Nas Operações, o exemplo <em>empate</em> (1 + 2^−24 em single) e o exemplo <em>sticky</em> (1 + 2^−27).</li>
+</ul>`,
         },
         {
             id: 'flags',

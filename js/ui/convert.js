@@ -10,6 +10,7 @@ import { getFormat } from '../fp/formats.js';
 import * as core from '../fp/core.js';
 import { esc, tm, md, formatOptions, modeOptions, flagsHtml, bitsHtml, fmtName, modeName } from './common.js';
 import { numberLineHtml } from './numberline.js';
+import { explainHtml } from './explain.js';
 
 export const defaults = () => ({ fmt: 'single', mode: 'rne', text: '0.1', sat: false });
 
@@ -133,6 +134,7 @@ function output(st) {
                 ${round}
             </section>
             ${a.neighbors ? `<section class="card span2"><h2>${esc(t('ui.numberLine'))} <span class="sub">${esc(t('conv.nlSub'))}</span></h2>${numberLineHtml(a.neighbors)}</section>` : ''}
+            ${a.explain ? explainHtml(a.explain, st.mode) : ''}
             <section class="card span2">
                 <h2>${esc(t('conv.modesTitle'))}</h2>
                 <div class="scroll"><table class="data"><tr><th>${esc(t('ui.mode'))}</th><th></th><th>${esc(t('ui.bits'))}</th><th>${esc(t('ui.value'))}</th><th>${esc(t('ui.relErr'))}</th><th>${esc(t('ui.flags'))}</th></tr>${modes}</table></div>

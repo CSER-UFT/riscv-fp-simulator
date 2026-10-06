@@ -5,7 +5,7 @@
 import { t } from '../i18n/index.js';
 import { getFormat } from '../fp/formats.js';
 import { flagList } from '../fp/core.js';
-import { stepText, specialText, regLabel, intStepText } from './text.js';
+import { stepText, specialText, regLabel, intStepText, modeReason, droppedSummary } from './text.js';
 
 export const tex = (s) => String(s ?? '')
     .replace(/\\/g, '\\textbackslash{}')
@@ -58,6 +58,20 @@ function bitsTable(fmtId, bits, caption) {
         '\\end{tabular}}', `\\caption{${caption}}`, '\\end{table}', ''];
 }
 
+/** Explicação dos modos: significando cortado, G, R, S e uma frase por modo. */
+function explainTables(ex, v, fmt) {
+    if (!ex) return [];
+    const out = [];
+    const drop = ex.dropped ? `${ex.dropped}${ex.more ? '\\ldots{}' : ''}` : '-';
+    out.push(...table([tex(t('rx.kept', { p: ex.fmt.p })), tex(t('rx.dropped')), tex(t('ui.exponent'))],
+        [[tt(`${ex.kept[0]}.${ex.kept.slice(1)}`), `\\texttt{${drop}}`, String(ex.E)]],
+        texMd(droppedSummary(ex)), { cols: '|l|l|c|' }));
+    out.push(...table([tex(t('rx.mode')), tex(t('rx.result')), tex(t('rx.why'))],
+        ex.modes.map((m) => [m.mode.toUpperCase(), `${tex(m.text)} \\newline ${tt(m.hex)}`, texMd(modeReason(ex, m.mode))]),
+        tex(t('tex.explainCaption', { v, fmt })), { cols: '|l|p{0.22\\textwidth}|p{0.6\\textwidth}|' }));
+    return out;
+}
+
 /** Conversão: bits, campos, os cinco modos e todos os formatos. */
 export function conversionLatex(a) {
     const fmt = t(`fmt.${a.fmt.id}`);
@@ -77,6 +91,7 @@ export function conversionLatex(a) {
     out.push(...table([tex(t('ui.mode')), tex(t('ui.bits')), tex(t('ui.value')), tex(t('ui.relErr')), tex(t('ui.flags'))],
         a.modes.map((m) => [`${m.mode.toUpperCase()}`, tt(m.hex), tex(m.short), m.err ? tex(m.err.rel) : '-', flagsTex(m.flags)]),
         tex(t('tex.modesCaption', { v: a.text, fmt }))));
+    out.push(...explainTables(a.explain, a.text, fmt));
     out.push(...table([tex(t('ui.format')), tex(t('ui.bits')), tex(t('ui.value')), tex(t('ui.relErr')), tex(t('ui.flags'))],
         a.formats.map((m) => [tex(t(`fmt.${m.fmt}`)), tt(m.hex), tex(m.short), m.err ? tex(m.err.rel) : '-', flagsTex(m.flags)]),
         tex(t('tex.formatsCaption', { v: a.text, mode: a.mode.toUpperCase() }))));
@@ -104,6 +119,7 @@ export function operationLatex(o) {
     out.push(...table([tex(t('ui.mode')), tex(t('ui.bits')), tex(t('ui.value')), tex(t('ui.relErr')), tex(t('ui.flags'))],
         o.modes.map((m) => [m.mode.toUpperCase(), tt(m.hex), tex(m.short), m.err ? tex(m.err.rel) : '-', flagsTex(m.flags)]),
         tex(t('tex.opModesCaption', { op: opName, fmt }))));
+    out.push(...explainTables(o.explain, opName, fmt));
     return out.join('\n');
 }
 

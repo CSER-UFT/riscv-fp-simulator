@@ -8,9 +8,10 @@ import { analyzeConversion, analyzeOperation, FORMAT_IDS, ROUNDING_MODES } from 
 import { EXPERIMENTS } from '../js/app/experiments.js';
 import { generate, QUESTION_TYPES } from '../js/app/questions.js';
 import { conversionLatex, operationLatex, experimentLatex, questionsLatex, integerLatex } from '../js/app/latex.js';
-import { stepText, intStepText } from '../js/app/text.js';
+import { stepText, intStepText, modeReason, droppedSummary } from '../js/app/text.js';
 import { compute } from '../js/ui/integer.js';
 import { setLanguage } from '../js/i18n/index.js';
+import * as core from '../js/fp/core.js';
 
 /** Chaves balanceadas e nenhum caractere fora do que o pdflatex aceita com inputenc utf8 e T1. */
 function latexOk(s, label) {
@@ -110,4 +111,44 @@ test('exercícios: a resposta canônica é aceita, respostas erradas não, e a s
     const fl = generate({ seed: 8, count: 1, types: ['flags'], formats: ['e4m3'], modes: ['rne'] })[0];
     assert.ok(fl.check(fl.answer.split(' ').reverse().join(', ')));
     for (const ty of QUESTION_TYPES) assert.ok(generate({ seed: 2, count: 3, types: [ty] }).every((q) => q.type === ty));
+});
+
+test('explicação dos modos: empate, negativos, estouro, exato e textos sem lacunas', () => {
+    setLanguage('pt');
+    const ex = (f, v) => analyzeConversion(f, v, 'rne').explain;
+    const tie = ex('single', '16777217');
+    assert.equal(tie.half, true);
+    assert.deepEqual([tie.G, tie.R, tie.S], [1, 0, 0]);
+    assert.equal(tie.lo.lsb, 0);
+    assert.match(modeReason(tie, 'rne'), /par/);
+    assert.deepEqual(tie.modes.map((m) => m.side), ['lo', 'lo', 'lo', 'hi', 'hi']);
+    const neg = ex('single', '-0.1');
+    assert.deepEqual(neg.modes.map((m) => m.side), ['hi', 'lo', 'hi', 'lo', 'hi']);
+    assert.equal(neg.dLo, '0.8');
+    const over = ex('single', '1e39');
+    assert.equal(over.overflow, true);
+    assert.match(droppedSummary(over), /fora da grade/);
+    assert.match(modeReason(ex('e4m3', '470'), 'rne'), /estouro/);
+    assert.equal(ex('single', '0.5').exact, true);
+    const sub = ex('single', '1e-46');
+    assert.equal(sub.subnormal, true);
+    assert.equal(sub.kept, '0'.repeat(24));
+    // Os bits mantidos são o truncamento: igual ao significando do vizinho lo.
+    for (const id of FORMAT_IDS)
+        for (const v of VALUES) {
+            const a = analyzeConversion(id, v, 'rne');
+            if (!a?.explain) continue;
+            for (const lang of ['pt', 'en']) {
+                setLanguage(lang);
+                for (const m of ROUNDING_MODES) assert.doesNotMatch(modeReason(a.explain, m), /\{\w+\}|undefined|NaN ULP/, `${id} ${v} ${m}`);
+                assert.doesNotMatch(droppedSummary(a.explain), /\{\w+\}|undefined/, `${id} ${v}`);
+            }
+            setLanguage('pt');
+            const e = a.explain;
+            if (!e.exact && e.r < 1) {
+                const lo = BigInt(`0b${e.kept}`);
+                const d = core.decode(id, e.lo.bits);
+                assert.equal(d.sig, lo, `${id} ${v}: bits mantidos = lo`);
+            }
+        }
 });

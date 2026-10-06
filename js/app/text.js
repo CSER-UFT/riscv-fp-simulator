@@ -76,3 +76,40 @@ export function intStepText(row, res) {
     const key = `ist.${row.step}`;
     return t(key, { ...p, neg: p.negative ? t('ist.negYes') : t('ist.negNo'), n: res.n });
 }
+
+/**
+ * Por que o modo `mode` escolhe o resultado que escolhe, com os números do caso (texto com marcações).
+ * @param {object} ex resultado de roundingExplain
+ */
+export function modeReason(ex, mode) {
+    if (ex.exact) return t('rx.exact');
+    const lo = ex.lo.text, hi = ex.hi.text;
+    const beyond = ex.r > 1;
+    const near = (pick) => {
+        if (beyond) return t('rx.beyond', { lo, hi });
+        // O mais próximo é o valor da grade logo depois do maior finito: estouro.
+        if (ex.overflow && pick === hi) return t('rx.nearOver', { lo, hi, dlo: ex.dLo, dhi: ex.dHi });
+        return t('rx.near', { pick, lo, hi, dlo: ex.dLo, dhi: ex.dHi });
+    };
+    switch (mode) {
+        case 'rne':
+            if (ex.half) return t('rx.tieEven', { lo, hi, llo: ex.lo.lsb ?? '-', lhi: ex.hi.lsb ?? '-', pick: ex.modes[0].text });
+            return near(ex.modes[0].text);
+        case 'rmm':
+            if (ex.half) return t('rx.tieAway', { hi });
+            return near(ex.modes[4].text);
+        case 'rtz': return t('rx.rtz', { lo }) + (ex.overflow ? ` ${t('rx.rtzOver')}` : '');
+        case 'rdn': return t(ex.sign ? 'rx.downNeg' : 'rx.downPos', { lo, hi });
+        case 'rup': return t(ex.sign ? 'rx.upNeg' : 'rx.upPos', { lo, hi });
+        default: return '';
+    }
+}
+
+/** Resumo da parte descartada: G, R, S e quanto ela vale em ULPs. */
+export function droppedSummary(ex) {
+    if (ex.exact) return t('rx.noDrop');
+    // Além do próximo valor da grade, o corte depois do bit p não corresponde a nenhum vizinho do formato.
+    if (ex.r >= 1) return t('rx.overRange', { lo: ex.lo.text });
+    const rel = ex.r > 1 ? t('rx.relBeyond') : ex.half ? t('rx.relHalf') : ex.G ? t('rx.relAbove') : t('rx.relBelow');
+    return t('rx.grs', { G: ex.G, R: ex.R, S: ex.S, r: ex.r > 1 ? '>1' : ex.dLo, rel });
+}

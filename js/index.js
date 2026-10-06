@@ -172,6 +172,11 @@ themeBtn.addEventListener('click', () => {
 const readme = document.getElementById('readme');
 const help = new Help(readme, () => {});
 const HELP_SECTION = { convert: 'convert', ops: 'ops', exp: 'experiments', int: 'integer', ex: 'classroom' };
+// Ligações para uma seção da ajuda dentro das vistas (data-help="seção").
+main.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-help]');
+    if (b) help.open(b.dataset.help);
+});
 document.getElementById('open-help').addEventListener('click', () => {
     if (help.isOverlay()) help.close();
     else help.open(HELP_SECTION[state.view]);
