@@ -7,10 +7,11 @@ import * as core from '../fp/core.js';
 import { FORMATS, ROUNDING_MODES, getFormat } from '../fp/formats.js';
 import { fromText, displayText as shortestText, exactValueText, parseNumber } from '../fp/decimal.js';
 import { multiply, divide, toSigned, toUnsigned } from '../int/arith.js';
-import { hex } from './analysis.js';
+import { hex, roundingExplain } from './analysis.js';
+import { fixedFormat, fromRational as fixedFromRational } from '../fx/fixed.js';
 import { rng } from './rng.js';
 
-export const QUESTION_TYPES = ['encode', 'decode', 'exponent', 'round', 'flags', 'intmul', 'intdiv'];
+export const QUESTION_TYPES = ['encode', 'decode', 'exponent', 'round', 'flags', 'grs', 'modes', 'fixenc', 'intmul', 'intdiv'];
 
 export { rng };
 
@@ -169,6 +170,81 @@ function genIntDiv(r) {
     };
 }
 
+/** Valor que não é representável em f e fica entre dois vizinhos finitos (para G, R, S e os modos). */
+function inexactValue(r, f) {
+    for (let i = 0; i < 50; i++) {
+        const v = niceValue(r, f);
+        const p = parseNumber(v);
+        if (!p || p.kind !== 'finite' || p.N === 0n) continue;
+        const ex = roundingExplain(f.id, { sign: p.sign, N: p.N, D: p.D });
+        if (ex && !ex.exact && !ex.overflow && !ex.subnormal && ex.r < 1) return { v, ex };
+    }
+    // Sempre há um valor de reserva: 0.1 não termina em binário em nenhum formato.
+    const ex = roundingExplain(f.id, { sign: 0, N: 1n, D: 10n });
+    return { v: '0.1', ex };
+}
+
+function genGrs(r, f) {
+    const { v, ex } = inexactValue(r, f);
+    const ans = `${ex.G} ${ex.R} ${ex.S}`;
+    return {
+        type: 'grs', text: { key: 'q.grs', params: { v, fmt: f.id } },
+        answer: ans,
+        check: (a) => { const d = String(a).replace(/[^01]/g, ''); return d === `${ex.G}${ex.R}${ex.S}`; },
+        solution: { key: 'q.sol.grs', params: { kept: `${ex.kept[0]}.${ex.kept.slice(1)}`, dropped: `${ex.dropped}${ex.more ? '…' : ''}`, r: ex.dLo } },
+        link: { view: 'convert', fmt: f.id, mode: 'rne', text: v },
+    };
+}
+
+function genModes(r, f) {
+    const { v, ex } = inexactValue(r, f);
+    const up = ex.modes.filter((m) => m.side === 'hi').map((m) => m.mode.toUpperCase());
+    return {
+        type: 'modes', text: { key: 'q.modes', params: { v, fmt: f.id } },
+        answer: up.join(' ') || '-',
+        check: (a) => {
+            const parts = String(a).toUpperCase().split(/[^A-Z]+/).filter(Boolean);
+            if (!parts.length) return up.length === 0 && String(a).trim() === '-';
+            if (!parts.every((x) => ROUNDING_MODES.includes(x.toLowerCase()))) return false;
+            return [...new Set(parts)].sort().join() === [...up].sort().join();
+        },
+        solution: { key: 'q.sol.modes', params: { lo: exactValueText(f.id, ex.lo.bits), hi: exactValueText(f.id, ex.hi.bits), r: ex.dLo } },
+        link: { view: 'convert', fmt: f.id, mode: 'rne', text: v },
+    };
+}
+
+const FIX_FORMATS = [[3, 4, true], [1, 6, true], [2, 5, true], [4, 4, false], [0, 7, true]];
+
+function genFixEnc(r, f, mode) {
+    const [m, n, signed] = FIX_FORMATS[Math.floor(r() * FIX_FORMATS.length)];
+    const fx = fixedFormat(m, n, signed);
+    // Valores dentro da faixa: frações curtas, decimais que não terminam em binário e, às vezes, negativos.
+    const lim = 2 ** m;
+    const sign = signed && r() < 0.4 ? '-' : '';
+    const pick = r();
+    let v;
+    if (pick < 0.4) v = String(Number(((Math.floor(r() * lim * 100)) / 100 || 0.1).toFixed(2)));
+    else if (pick < 0.7) v = ['0.1', '0.3', '0.7', '0.2', '0.45', '0.9', '0.33'][Math.floor(r() * 7)];
+    else v = String((1 + Math.floor(r() * (lim * 8 - 1))) / 8 + 1 / 2 ** (n + 1));
+    if (Number(v) >= lim) v = String(lim / 2 + 0.3);
+    v = sign + v;
+    const p = parseNumber(v);
+    const res = fixedFromRational(fx, p.sign, p.N, p.D, mode, 'sat');
+    const bin = res.bits.toString(2).padStart(fx.bits, '0');
+    const value = ((x) => { const a = x < 0n ? -x : x; return `${x < 0n ? '-' : ''}${Number(a) / 2 ** n}`; })(res.raw);
+    return {
+        type: 'fixenc', text: { key: 'q.fixenc', params: { v, name: fx.name, mode, bits: fx.bits } },
+        answer: bin,
+        check: (a) => {
+            const t = String(a).trim();
+            if (/^0x/i.test(t)) return normHex(t) === normHex(res.bits.toString(16));
+            return normBin(t).padStart(fx.bits, '0') === bin && normBin(t).length <= fx.bits;
+        },
+        solution: { key: 'q.sol.fixenc', params: { raw: res.raw.toString(), n, value, flags: core.flagList(res.flags).join(' ') || '-' } },
+        link: { view: 'fix', m, n, signed, mode, op: 'conv', a: v },
+    };
+}
+
 /**
  * Gera `count` questões dos tipos e formatos pedidos.
  * @param {{seed: number, count: number, types: string[], formats: string[], modes: string[]}} opts
@@ -184,7 +260,7 @@ export function generate({ seed = 1, count = 8, types = QUESTION_TYPES, formats 
         const type = ts[i % ts.length];
         const f = getFormat(fs[Math.floor(r() * fs.length)]);
         const mode = ms[Math.floor(r() * ms.length)];
-        const q = { encode: genEncode, decode: genDecode, exponent: genExponent, round: genRound, flags: genFlags, intmul: genIntMul, intdiv: genIntDiv }[type](r, f, mode);
+        const q = { encode: genEncode, decode: genDecode, exponent: genExponent, round: genRound, flags: genFlags, grs: genGrs, modes: genModes, fixenc: genFixEnc, intmul: genIntMul, intdiv: genIntDiv }[type](r, f, mode);
         out.push(q);
     }
     return out;

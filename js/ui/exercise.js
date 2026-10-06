@@ -8,7 +8,7 @@ import { questionsLatex } from '../app/latex.js';
 import { FORMAT_IDS, ROUNDING_MODES } from '../fp/formats.js';
 import { esc, tm, fmtName } from './common.js';
 
-export const defaults = () => ({ seed: 1 + Math.floor(Math.random() * 9999), count: 8, types: ['encode', 'decode', 'exponent', 'round', 'flags', 'intmul', 'intdiv'], formats: ['half', 'single', 'bf16', 'e4m3'], modes: [...ROUNDING_MODES] });
+export const defaults = () => ({ seed: 1 + Math.floor(Math.random() * 9999), count: 8, types: [...QUESTION_TYPES], formats: ['half', 'single', 'bf16', 'e4m3'], modes: [...ROUNDING_MODES] });
 
 const params = (q) => ({ ...q.text.params, fmt: q.text.params.fmt ? fmtName(q.text.params.fmt) : '', mode: (q.text.params.mode ?? '').toUpperCase() });
 

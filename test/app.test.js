@@ -13,6 +13,9 @@ import { stepText, intStepText, modeReason, droppedSummary, fixedStepText } from
 import { compute } from '../js/ui/integer.js';
 import { setLanguage } from '../js/i18n/index.js';
 import * as core from '../js/fp/core.js';
+import { getFormat as getFormatFor } from '../js/fp/formats.js';
+import { fromText } from '../js/fp/decimal.js';
+const fromTextFor = (f, v, m) => fromText(f, v, m).bits;
 
 /** Chaves balanceadas e nenhum caractere fora do que o pdflatex aceita com inputenc utf8 e T1. */
 function latexOk(s, label) {
@@ -112,6 +115,24 @@ test('exercícios: a resposta canônica é aceita, respostas erradas não, e a s
     const fl = generate({ seed: 8, count: 1, types: ['flags'], formats: ['e4m3'], modes: ['rne'] })[0];
     assert.ok(fl.check(fl.answer.split(' ').reverse().join(', ')));
     for (const ty of QUESTION_TYPES) assert.ok(generate({ seed: 2, count: 3, types: [ty] }).every((q) => q.type === ty));
+    // G, R, S, modos e ponto fixo: respostas certas conferidas contra o núcleo.
+    for (let seed = 1; seed <= 40; seed++) {
+        for (const q of generate({ seed, count: 3, types: ['grs', 'modes', 'fixenc'] })) {
+            if (q.type === 'grs') {
+                assert.match(q.answer, /^[01] [01] [01]$/);
+                assert.ok(q.check(q.answer.replace(/ /g, '')));
+            }
+            if (q.type === 'modes') {
+                const v = q.text.params.v, f = q.text.params.fmt;
+                const rtz = core.decode(getFormatFor(f), fromTextFor(f, v, 'rtz'));
+                const up = ROUNDING_MODES.filter((m) => fromTextFor(f, v, m) !== rtz.bits).map((m) => m.toUpperCase());
+                assert.equal(q.answer, up.join(' '), `${f} ${v}`);
+                assert.ok(q.check(up.reverse().join(',').toLowerCase()));
+                assert.ok(!q.check('RTZ'));
+            }
+            if (q.type === 'fixenc') assert.ok(q.check(`0x${parseInt(q.answer, 2).toString(16)}`));
+        }
+    }
 });
 
 test('explicação dos modos: empate, negativos, estouro, exato e textos sem lacunas', () => {

@@ -56,7 +56,7 @@ const ctx = {
     rerender: () => renderView(),
     openLink(link) {
         const { view, ...rest } = link;
-        const target = { convert: 'convert', ops: 'ops', int: 'int' }[view];
+        const target = { convert: 'convert', ops: 'ops', int: 'int', fix: 'fix' }[view];
         if (!target) return;
         state[target] = { ...state[target], ...rest, ...(target === 'ops' ? { hex: false } : {}) };
         state.view = target;
