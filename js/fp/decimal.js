@@ -121,6 +121,17 @@ export function shortestText(fmtId, bits) {
     return String(x).replace('e+', 'e');
 }
 
+/**
+ * Texto para exibir um valor: o decimal exato quando é curto (até 12 caracteres, como 448 ou 0.09375 em
+ * FP8), senão o menor decimal que recupera os bits. Evita mostrar 450 para o 448 do E4M3, que é o menor
+ * texto que volta aos mesmos bits mas não é o valor guardado.
+ */
+export function displayText(fmtId, bits) {
+    const exact = exactValueText(fmtId, bits);
+    if (exact.length <= 12 || exact === 'NaN' || exact.endsWith('∞')) return exact.replace('+∞', 'inf').replace('-∞', '-inf');
+    return shortestText(fmtId, bits);
+}
+
 /** Valor aproximado de um racional como número JavaScript (para gráficos e erros relativos). */
 export function ratToNumber(sign, N, D) {
     if (N === 0n) return sign ? -0 : 0;

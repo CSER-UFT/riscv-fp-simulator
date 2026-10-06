@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Simulador de Ponto Flutuante RISC-V</title>
+        <meta name="description" content="Simulador didático de aritmética de computadores com RISC-V: conversão para ponto flutuante (IEEE 754, bfloat16, FP8), operações passo a passo, os cinco modos de arredondamento e aritmética inteira." />
+        <link rel="icon" href="./svg/float.svg" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
+        <link rel="stylesheet" type="text/css" href="./css/index.css" />
+        <script>
+            // Aplica o tema antes da primeira pintura, para não piscar.
+            try {
+                const theme = localStorage.getItem('fp.theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                document.documentElement.dataset.theme = theme;
+            } catch { document.documentElement.dataset.theme = 'light'; }
+        </script>
+    </head>
+    <body>
+        <header id="header">
+            <div class="brand"><span class="icon i-float brand-mark" aria-hidden="true"></span><span class="brand-name" data-i18n-html="ui.appTitle">Simulador de Ponto Flutuante <b>RISC-V</b></span></div>
+            <nav class="views" id="views" role="tablist"></nav>
+            <div class="tools">
+                <div id="export-menu" class="menu">
+                    <button type="button" class="btn" data-i18n="ui.export">Exportar</button>
+                    <div class="menu-items"></div>
+                </div>
+                <button type="button" id="copy-link" class="btn" data-i18n="ui.copyLink" data-i18n-title="ui.copyLinkHelp">Copiar link</button>
+                <label class="lang"><span class="sr-only" data-i18n="ui.language">Idioma</span><select id="lang-select"></select></label>
+                <button type="button" id="theme-toggle" class="btn icon-btn" data-i18n-title="ui.theme"><span class="icon i-moon" aria-hidden="true"></span><span class="sr-only" data-i18n="ui.theme">Alternar contraste</span></button>
+                <button type="button" id="open-help" class="btn" data-i18n="ui.help">Ajuda</button>
+            </div>
+        </header>
+        <main id="main"></main>
+        <div id="readme" class="readme"></div>
+        <script type="module" src="./js/index.js"></script>
+    </body>
+</html>
