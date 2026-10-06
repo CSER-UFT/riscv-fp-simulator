@@ -1,0 +1,15 @@
+{
+  "name": "riscv-fp-simulator",
+  "private": true,
+  "description": "Simulador didático de aritmética de computadores com RISC-V: ponto flutuante (IEEE 754, bfloat16 e FP8) e aritmética inteira",
+  "repository": "github:CSER-UFT/riscv-fp-simulator",
+  "license": "GPL-3.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "start": "python3 -m http.server 8000"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
