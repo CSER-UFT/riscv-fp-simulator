@@ -261,7 +261,7 @@ export default {
     <tr><td><code>frcsr</code>, <code>fscsr</code>, <code>frrm</code>, <code>fsflags</code></td><td>leem e escrevem o fcsr</td></tr>
 </table>
 <p>Os valores mais estreitos ficam nos registradores de 64 bits com os bits de cima em 1 (<em>NaN boxing</em>): assim um single mal usado como double é lido como NaN.</p>
-<p>Este simulador é o complemento do <a href="https://cser-uft.github.io/riscv-simulator/" target="_blank" rel="noopener">Simulador de Processadores RISC-V</a> (monociclo, pipeline, Tomasulo e caches) e do <a href="https://cser-uft.github.io/riscv-dlp-simulator/" target="_blank" rel="noopener">Simulador de Paralelismo de Dados RISC-V</a> (vetorial, GPU e TPU).</p>`,
+<p>Este simulador é o complemento do <a href="https://cser-uft.github.io/riscv-cpu-simulator/" target="_blank" rel="noopener">Simulador de Processadores RISC-V</a> (monociclo, pipeline, Tomasulo e caches) e do <a href="https://cser-uft.github.io/riscv-dlp-simulator/" target="_blank" rel="noopener">Simulador de Paralelismo de Dados RISC-V</a> (vetorial, GPU e TPU).</p>`,
         },
         {
             id: 'limits',

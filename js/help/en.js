@@ -260,7 +260,7 @@ export default {
     <tr><td><code>frcsr</code>, <code>fscsr</code>, <code>frrm</code>, <code>fsflags</code></td><td>read and write fcsr</td></tr>
 </table>
 <p>Narrower values live in the 64 bit registers with the upper bits set to 1 (<em>NaN boxing</em>): a single misused as a double reads as NaN.</p>
-<p>This simulator complements the <a href="https://cser-uft.github.io/riscv-simulator/" target="_blank" rel="noopener">RISC-V Processor Simulator</a> (single cycle, pipeline, Tomasulo and caches) and the <a href="https://cser-uft.github.io/riscv-dlp-simulator/" target="_blank" rel="noopener">RISC-V Data Parallelism Simulator</a> (vector, GPU and TPU).</p>`,
+<p>This simulator complements the <a href="https://cser-uft.github.io/riscv-cpu-simulator/" target="_blank" rel="noopener">RISC-V Processor Simulator</a> (single cycle, pipeline, Tomasulo and caches) and the <a href="https://cser-uft.github.io/riscv-dlp-simulator/" target="_blank" rel="noopener">RISC-V Data Parallelism Simulator</a> (vector, GPU and TPU).</p>`,
         },
         {
             id: 'limits',

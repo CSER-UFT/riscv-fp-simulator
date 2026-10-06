@@ -4,7 +4,7 @@
 
 Simulador didático de aritmética de computadores, desenvolvido para o curso de **Ciência da Computação** da **Universidade Federal do Tocantins**. Mostra como um número é guardado em ponto flutuante, como o hardware soma, multiplica, divide e arredonda, a diferença entre os cinco modos de arredondamento do RISC-V e os algoritmos de aritmética inteira do capítulo 3 do Patterson e Hennessy.
 
-É o terceiro simulador da família, ao lado do [Simulador de Processadores RISC-V](https://github.com/CSER-UFT/riscv-simulator) (monociclo, pipeline, Tomasulo e caches) e do [Simulador de Paralelismo de Dados RISC-V](https://github.com/CSER-UFT/riscv-dlp-simulator) (vetorial, GPU e TPU).
+É o terceiro simulador da família, ao lado do [Simulador de Processadores RISC-V](https://github.com/CSER-UFT/riscv-cpu-simulator) (monociclo, pipeline, Tomasulo e caches) e do [Simulador de Paralelismo de Dados RISC-V](https://github.com/CSER-UFT/riscv-dlp-simulator) (vetorial, GPU e TPU).
 
 O simulador roda inteiramente no navegador (HTML e JavaScript, sem dependências nem etapa de compilação) e pode ser publicado diretamente no GitHub Pages. A interface está em português e em inglês, com tema claro e tema escuro.
 
