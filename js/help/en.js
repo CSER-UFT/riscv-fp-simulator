@@ -122,6 +122,8 @@ export default {
 <h3>Double rounding</h3>
 <p>Rounding twice (first to a wider format, then to the narrower one) can give a different result from rounding once. Example: x = 1 + 2^−24 + 2^−60, typed as <code>0x1.000001000000001p0</code>. Directly to single, x is slightly above the midpoint between 1 and the next neighbor, and RNE gives <code>0x3F800001</code>. Going through double first, the 2^−60 is lost (double has 52 fraction bits) and exactly the midpoint remains; the tie goes to even, and the final result is 1 (<code>0x3F800000</code>). This is why fmadd, with a single rounding, can differ from fmul followed by fadd, and why compilers are careful when computing in more precision than requested.</p>
 
+<h3>Stochastic rounding</h3>
+<p>Outside RISC-V and IEEE 754 there is a sixth scheme, used in AI accelerators to train with bf16 and FP8: <strong>stochastic rounding</strong> (SR). Instead of a fixed rule, it draws at random: if the dropped part is worth r ULP (0 &lt; r &lt; 1), the result goes to the neighbor with larger magnitude with probability r and stays at the one with smaller magnitude with probability 1 − r. For 0.1 in single (r = 0.8), it goes up 80% of the time. The expected value is exactly x, so errors do not pile up in one direction. The explanation panel shows this line (SR*) below the five modes, and the <em>Stochastic rounding</em> experiment shows the effect: adding 1 in bf16, RNE stops at 256 while the SR mean follows the exact sum.</p>
 <h3>Things to try</h3>
 <ul>
     <li><code>16777217</code> in single: exact tie between 16777216 and 16777218; RNE keeps the even one (16777216) and RMM the one with larger magnitude.</li>
@@ -191,6 +193,7 @@ export default {
     <dt>Catastrophic cancellation</dt><dd>(1 + x) − 1 for smaller and smaller x: the relative error grows up to 100% when x vanishes in the sum.</dd>
     <dt>fmadd versus fmul + fadd</dt><dd>A case where the rounded product loses the only bit that mattered.</dd>
     <dt>Counting that stops</dt><dd>s = s + 1 until it stops changing: it stops at 2^p (2048 in half, 256 in bfloat16, 16 in E4M3).</dd>
+    <dt>Stochastic rounding</dt><dd>The same sum in the chosen mode and with SR, repeated with several seeds: RNE stops, the SR mean follows the exact sum.</dd>
     <dt>Precision and format</dt><dd>The harmonic sum in six formats, with the error of each one and the point where the sum stalls.</dd>
     <dt>Spacing between neighbors</dt><dd>The ULP along the powers of 10.</dd>
 </dl>

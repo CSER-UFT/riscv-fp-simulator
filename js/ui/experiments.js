@@ -48,11 +48,11 @@ function output(ex, p) {
     const rows = r.rows.map((row) => `<tr>${row.map((c, i) => (i === 0 ? `<th>${cell(c)}</th>` : `<td class="num">${cell(c)}</td>`)).join('')}</tr>`).join('');
     const notes = (r.notes ?? []).map(([k, params]) => `<p class="note">${tm(k, params)}</p>`).join('');
     let chart = '';
-    if (r.chart?.kind === 'log') chart = lineChart({ series: r.chart.series.map(([k, pts]) => [t(k), pts]), xLabel: t(r.chart.x), yLabel: t(r.chart.y), envelopeNote: t('exp.envelope') });
+    if (r.chart?.kind === 'log') chart = lineChart({ series: r.chart.series.map(([k, pts]) => [t(k), pts]), xLabel: t(r.chart.x), yLabel: t(r.chart.y), envelopeNote: t(r.chart.envelope ?? 'exp.envelope') });
     if (r.chart?.kind === 'bars') chart = barChart({ bars: r.chart.bars.map(([id, v]) => [t(`fmt.${id}`), v]), yLabel: t(r.chart.y) });
     return `
         ${notes ? `<section class="card">${notes}</section>` : ''}
-        ${chart ? `<section class="card"><h2>${esc(t('exp.chart'))} <span class="sub">${esc(t('exp.chartSub'))}</span></h2>${chart}</section>` : ''}
+        ${chart ? `<section class="card"><h2>${esc(t('exp.chart'))} <span class="sub">${esc(t(r.chart?.sub ?? 'exp.chartSub'))}</span></h2>${chart}</section>` : ''}
         <section class="card"><h2>${esc(t('exp.table'))}</h2><div class="scroll"><table class="data">${`<tr>${head}</tr>`}${rows}</table></div></section>`;
 }
 

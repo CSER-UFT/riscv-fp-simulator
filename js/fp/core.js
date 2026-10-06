@@ -152,15 +152,28 @@ export function floorLog2(N, D) {
 }
 
 /** Resultado de estouro conforme o modo e o sinal. */
+/**
+ * Arredondamento estocástico (fora dos modos do RISC-V, usado em aceleradores de IA): sobe com probabilidade
+ * igual à fração descartada, rem/d em ULPs, comparada com um número aleatório u em [0, 1). Assim o valor
+ * esperado do resultado é o valor exato, e pequenas parcelas não se perdem em média.
+ */
+export const STOCHASTIC = 'sr';
+function stochasticUp(rem, d, u) {
+    if (rem === 0n) return false;
+    const U = BigInt(Math.floor(u * 2 ** 53));
+    return rem * (1n << 53n) > U * d;
+}
+
 function overflowBits(f, sign, mode, sat) {
-    const toInf = mode === 'rne' || mode === 'rmm' || (mode === 'rdn' && sign === 1) || (mode === 'rup' && sign === 0);
+    const toInf = mode === 'rne' || mode === STOCHASTIC || mode === 'rmm' || (mode === 'rdn' && sign === 1) || (mode === 'rup' && sign === 0);
     if (sat || !toInf) return maxFinite(f, sign);
     return f.hasInf ? infinity(f, sign) : canonicalNaN(f);
 }
 
 /**
  * Arredonda o racional positivo N/D (com o sinal dado) para o formato, no modo pedido.
- * @param {object} opts sat: em formatos de 8 bits, satura no maior finito em vez de produzir infinito ou NaN
+ * @param {object} opts sat: em formatos de 8 bits, satura no maior finito em vez de produzir infinito ou NaN;
+ *   u: número em [0, 1) para o modo estocástico 'sr' (o padrão é Math.random())
  * @returns {{bits: bigint, flags: number, info: object}} info descreve o arredondamento: q (bits mantidos,
  *   com o implícito), lsbExp (expoente do bit menos significativo de q antes do incremento), guard, round e
  *   sticky, cmp, up, tiny, overflow
@@ -170,13 +183,16 @@ export function roundRational(fmt, sign, N, D, mode, opts = {}) {
     if (N === 0n) return { bits: zero(f, sign), flags: 0, info: { exactZero: true } };
     const e = floorLog2(N, D);
     const p = f.p;
+    // No modo estocástico, a mesma sorte vale para a detecção de valor minúsculo e para o resultado.
+    const u = mode === STOCHASTIC ? (opts.u ?? Math.random()) : 0;
+    const decide = (q, rem, d) => (mode === STOCHASTIC ? stochasticUp(rem, d, u) : roundsUp(mode, sign, q, halfCmp(rem, d), rem !== 0n));
 
     // Arredondamento com expoente ilimitado, só para detectar valor minúsculo depois do arredondamento.
     let E1 = e;
     {
         const { q, rem, D: d } = scaledDiv(N, D, p - 1 - e);
         let q1 = q;
-        if (roundsUp(mode, sign, q, halfCmp(rem, d), rem !== 0n)) q1 += 1n;
+        if (decide(q, rem, d)) q1 += 1n;
         if (q1 === pow2(p)) E1++;
     }
     const tiny = E1 < f.emin;
@@ -191,7 +207,7 @@ export function roundRational(fmt, sign, N, D, mode, opts = {}) {
     const guard = Number(four / d) >> 1;
     const round = Number(four / d) & 1;
     const sticky = four % d !== 0n ? 1 : 0;
-    const up = roundsUp(mode, sign, q, cmp, inexact);
+    const up = decide(q, rem, d);
     let q2 = up ? q + 1n : q;
     if (q2 === pow2(p)) {
         q2 >>= 1n;

@@ -3,7 +3,7 @@
  * resultado exato).
  */
 import { t } from '../i18n/index.js';
-import { modeReason, droppedSummary } from '../app/text.js';
+import { modeReason, droppedSummary, stochasticReason } from '../app/text.js';
 import { esc, md } from './common.js';
 
 /**
@@ -18,6 +18,8 @@ export function explainHtml(ex, cur) {
         ? `<span class="xb-drop">${d[0] ? `<b class="xb-g" title="G">${d[0]}</b>` : ''}${d[1] ? `<b class="xb-r" title="R">${d[1]}</b>` : ''}<span class="xb-s" title="S">${d.slice(2)}${ex.more ? '…' : ''}</span></span>`
         : '';
     const rows = ex.modes.map((m) => `<tr class="${m.mode === cur ? 'cur' : ''}"><th>${m.mode.toUpperCase()}</th><td><b>${esc(m.text)}</b><br/><code class="sub">${esc(m.hex)}</code></td><td>${md(modeReason(ex, m.mode))}</td></tr>`).join('');
+    const sr = stochasticReason(ex);
+    const srRow = sr ? `<tr class="sr"><th>SR<sup>*</sup></th><td><b>${esc(ex.lo.text)}</b> ${esc(t('rx.or'))} <b>${esc(ex.hi.text)}</b></td><td>${md(sr)}</td></tr>` : '';
     return `<section class="card span2 explain">
         <h2>${esc(t('rx.title'))} <span class="sub">${esc(t('rx.sub'))}</span></h2>
         <div class="xbits mono">
@@ -27,7 +29,8 @@ export function explainHtml(ex, cur) {
         <p class="note">${md(droppedSummary(ex))}</p>
         ${ex.exact ? '' : `<p class="note">${md(t('rx.neighbors', { lo: ex.lo.text, hi: ex.hi.text, loHex: ex.lo.hex, hiHex: ex.hi.hex }))} ${esc(t('rx.cutNote'))}</p>`}
         ${ex.subnormal ? `<p class="note">${esc(t('rx.subnormal'))}</p>` : ''}
-        <table class="data why"><tr><th>${esc(t('rx.mode'))}</th><th>${esc(t('rx.result'))}</th><th>${esc(t('rx.why'))}</th></tr>${rows}</table>
+        <table class="data why"><tr><th>${esc(t('rx.mode'))}</th><th>${esc(t('rx.result'))}</th><th>${esc(t('rx.why'))}</th></tr>${rows}${srRow}</table>
+        ${sr ? `<p class="hint">${md(t('rx.srNote'))}</p>` : ''}
         <p class="hint"><button type="button" class="link" data-help="rounding">${esc(t('rx.moreHelp'))}</button></p>
     </section>`;
 }

@@ -62,6 +62,8 @@ test('chaves montadas dinamicamente existem', () => {
         for (const [k] of r.notes ?? []) need.push(k);
         if (r.chart?.x) need.push(r.chart.x);
         if (r.chart?.y) need.push(r.chart.y);
+        if (r.chart?.sub) need.push(r.chart.sub);
+        if (r.chart?.envelope) need.push(r.chart.envelope);
         for (const [k] of r.chart?.series ?? []) need.push(k);
     }
     for (const q of QUESTION_TYPES) need.push(`q.type.${q}`, `q.ph.${q}`);

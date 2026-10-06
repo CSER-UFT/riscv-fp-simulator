@@ -5,7 +5,7 @@
 import { t } from '../i18n/index.js';
 import { getFormat } from '../fp/formats.js';
 import { flagList } from '../fp/core.js';
-import { stepText, specialText, regLabel, intStepText, modeReason, droppedSummary, fixedStepText } from './text.js';
+import { stepText, specialText, regLabel, intStepText, modeReason, droppedSummary, fixedStepText, stochasticReason } from './text.js';
 
 export const tex = (s) => String(s ?? '')
     .replace(/\\/g, '\\textbackslash{}')
@@ -67,7 +67,8 @@ function explainTables(ex, v, fmt) {
         [[tt(`${ex.kept[0]}.${ex.kept.slice(1)}`), `\\texttt{${drop}}`, String(ex.E)]],
         texMd(droppedSummary(ex)), { cols: '|l|l|c|' }));
     out.push(...table([tex(t('rx.mode')), tex(t('rx.result')), tex(t('rx.why'))],
-        ex.modes.map((m) => [m.mode.toUpperCase(), `${tex(m.text)} \\newline ${tt(m.hex)}`, texMd(modeReason(ex, m.mode))]),
+        [...ex.modes.map((m) => [m.mode.toUpperCase(), `${tex(m.text)} \\newline ${tt(m.hex)}`, texMd(modeReason(ex, m.mode))]),
+            ...(stochasticReason(ex) ? [['SR*', `${tex(ex.lo.text)} ${tex(t('rx.or'))} ${tex(ex.hi.text)}`, `${texMd(stochasticReason(ex))} ${texMd(t('rx.srNote'))}`]] : [])],
         tex(t('tex.explainCaption', { v, fmt })), { cols: '|l|p{0.22\\textwidth}|p{0.6\\textwidth}|' }));
     return out;
 }

@@ -7,6 +7,7 @@ import * as core from '../fp/core.js';
 import { FORMATS, FORMAT_IDS, getFormat } from '../fp/formats.js';
 import { parseNumber, fromText, displayText, ratToSci, ratToNumber, exactValueText } from '../fp/decimal.js';
 import { hex } from './analysis.js';
+import { rng } from './rng.js';
 
 const abs = (n) => (n < 0n ? -n : n);
 const gcd = (a, b) => { a = abs(a); b = abs(b); while (b) [a, b] = [b, a % b]; return a; };
@@ -187,6 +188,59 @@ function stagnation({ mode, step }) {
     };
 }
 
+/**
+ * Arredondamento estocástico: a mesma soma repetida no modo escolhido e no estocástico (SR), este repetido
+ * com sementes diferentes. Com RNE a soma para quando o valor somado fica abaixo de meio ULP; com SR cada
+ * soma sobe com probabilidade igual à fração descartada e a soma segue crescendo, certa em média.
+ */
+function stochastic({ fmt, mode, value, n, runs, seed }) {
+    const f = getFormat(fmt);
+    const p = parseAll([value]);
+    if (!p) return { error: 'value' };
+    const N = Math.max(1, Math.min(5000, Number(n) || 1000));
+    const M = Math.max(1, Math.min(50, Number(runs) || 10));
+    const x = fromText(fmt, value, mode).bits;
+    const xr = ofBits(f, x); // o valor armazenado: aqui interessa só o erro das somas
+    const zero = core.zero(f, 0);
+    const rand = rng(Number(seed) || 1);
+    const num = (r) => ratToNumber(r.s < 0n ? 1 : 0, abs(r.s), r.d);
+    const val = (b) => num(ofBits(f, b));
+    let s = zero, stall = null;
+    const sr = new Array(M).fill(zero);
+    const every = Math.max(1, Math.floor(N / 25));
+    const rows = [], series = { exact: [], det: [], mean: [] };
+    for (let k = 1; k <= N; k++) {
+        const s2 = core.add(f, s, x, mode).bits;
+        if (s2 === s && stall === null) stall = k;
+        s = s2;
+        for (let j = 0; j < M; j++) sr[j] = core.add(f, sr[j], x, core.STOCHASTIC, { u: rand() }).bits;
+        const exact = rmul(xr, { s: BigInt(k), d: 1n });
+        // Média exata das execuções: soma dos racionais dividida por M.
+        let mean = { s: 0n, d: 1n };
+        for (const b of sr) mean = radd(mean, ofBits(f, b));
+        mean = rmul(mean, { s: 1n, d: BigInt(M) });
+        series.exact.push([k, num(exact)]);
+        series.det.push([k, val(s)]);
+        series.mean.push([k, num(mean)]);
+        if (k % every === 0 || k === N) {
+            const d = radd(mean, { s: -exact.s, d: exact.d });
+            const errMean = d.s === 0n ? '0' : exact.s === 0n ? '∞' : ratToSci(0, abs(d.s) * exact.d, d.d * abs(exact.s), 3);
+            const vals = sr.map(val);
+            rows.push([k, exactShow(exact), show(f, s), relErr(f, s, exact).text, show(f, sr[0]), String(Number(num(mean).toPrecision(6))), errMean,
+                `${Math.min(...vals)} … ${Math.max(...vals)}`]);
+        }
+    }
+    const notes = [];
+    if (stall !== null) notes.push(['exp.stoch.stall', { k: stall, s: show(f, s), mode: mode.toUpperCase() }]);
+    notes.push(['exp.stoch.unbiased', { m: M }]);
+    return {
+        head: ['exp.k', 'exp.exactSum', 'exp.stoch.det', 'exp.relErr', 'exp.stoch.one', 'exp.stoch.mean', 'exp.relErr', 'exp.stoch.range'],
+        rows,
+        notes,
+        chart: { kind: 'log', x: 'exp.k', y: 'exp.stoch.sum', sub: 'exp.stoch.chartSub', envelope: 'exp.stoch.envelope', series: [['exp.exactSum', series.exact], ['exp.stoch.det', series.det], ['exp.stoch.mean', series.mean]] },
+    };
+}
+
 /** A mesma conta (soma harmônica) em todos os formatos, com o erro de cada um. */
 function precisionCompare({ mode, n }) {
     const N = Math.max(1, Math.min(5000, Number(n) || 100));
@@ -241,6 +295,7 @@ export const EXPERIMENTS = [
     { id: 'cancel', run: cancellation, params: { fmt: 'single', mode: 'rne', base: '1.2345678', steps: '10' }, fields: ['fmt', 'mode', 'base', 'steps'] },
     { id: 'fma', run: fmaVsMulAdd, params: { fmt: 'single', mode: 'rne', a: '1.000244140625', b: '1.000244140625', c: '-1.00048828125' }, fields: ['fmt', 'mode', 'a', 'b', 'c'] },
     { id: 'stag', run: stagnation, params: { mode: 'rne', step: '1' }, fields: ['mode', 'step'] },
+    { id: 'stoch', run: stochastic, params: { fmt: 'bf16', mode: 'rne', value: '1', n: '1000', runs: '10', seed: '1' }, fields: ['fmt', 'mode', 'value', 'n', 'runs', 'seed'] },
     { id: 'precision', run: precisionCompare, params: { mode: 'rne', n: '200' }, fields: ['mode', 'n'] },
     { id: 'spacing', run: spacing, params: { fmt: 'half' }, fields: ['fmt'] },
 ];

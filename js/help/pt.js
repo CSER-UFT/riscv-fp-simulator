@@ -123,6 +123,8 @@ export default {
 <h3>Arredondamento duplo</h3>
 <p>Arredondar duas vezes (primeiro para um formato maior, depois para o menor) pode dar um resultado diferente de arredondar uma vez só. Exemplo: x = 1 + 2^−24 + 2^−60, digitado como <code>0x1.000001000000001p0</code>. Direto para single, x está um pouco acima do meio entre 1 e o vizinho seguinte, e RNE dá <code>0x3F800001</code>. Passando antes por double, o 2^−60 se perde (double tem 52 bits de fração) e sobra exatamente o meio; o empate vai para o par, e o resultado final é 1 (<code>0x3F800000</code>). É por isso que o fmadd, com um único arredondamento, pode dar resultado diferente de fmul seguida de fadd, e que os compiladores tomam cuidado ao calcular em precisão maior que a pedida.</p>
 
+<h3>Arredondamento estocástico</h3>
+<p>Fora do RISC-V e da IEEE 754 existe um sexto esquema, usado em aceleradores de IA para treinar com bf16 e FP8: o <strong>arredondamento estocástico</strong> (SR). Em vez de uma regra fixa, ele sorteia: se a parte descartada vale r ULP (0 &lt; r &lt; 1), o resultado vai para o vizinho de maior magnitude com probabilidade r e fica no de menor magnitude com probabilidade 1 − r. Para 0,1 em single (r = 0,8), sobe em 80% das vezes. O valor esperado é exatamente x, então os erros não se acumulam em uma direção. O painel de explicação mostra essa linha (SR*) abaixo dos cinco modos, e o experimento <em>Arredondamento estocástico</em> mostra o efeito: somando 1 em bf16, RNE para em 256, enquanto a média do SR acompanha a soma exata.</p>
 <h3>Para testar</h3>
 <ul>
     <li><code>16777217</code> em single: empate exato entre 16777216 e 16777218; RNE fica com o par (16777216) e RMM com o de maior magnitude.</li>
@@ -192,6 +194,7 @@ export default {
     <dt>Cancelamento catastrófico</dt><dd>(1 + x) − 1 para x cada vez menor: o erro relativo cresce até 100% quando x some na soma.</dd>
     <dt>fmadd contra fmul + fadd</dt><dd>Um caso em que o produto arredondado perde o único bit que importava.</dd>
     <dt>Contagem que para</dt><dd>s = s + 1 até não mudar: para em 2^p (2048 em half, 256 em bfloat16, 16 em E4M3).</dd>
+    <dt>Arredondamento estocástico</dt><dd>A mesma soma no modo escolhido e com SR, repetida com várias sementes: RNE para, a média do SR segue a soma exata.</dd>
     <dt>Precisão e formato</dt><dd>A soma harmônica em seis formatos, com o erro de cada um e o ponto em que a soma estagna.</dd>
     <dt>Espaçamento entre vizinhos</dt><dd>O ULP ao longo das potências de 10.</dd>
 </dl>

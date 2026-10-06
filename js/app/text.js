@@ -106,6 +106,15 @@ export function modeReason(ex, mode) {
     }
 }
 
+/**
+ * Linha do arredondamento estocástico (fora do RISC-V) no painel dos modos, ou null quando não se aplica
+ * (valor exato ou além do maior finito).
+ */
+export function stochasticReason(ex) {
+    if (ex.exact || ex.r >= 1 || ex.overflow) return null;
+    return t('rx.sr', { lo: ex.lo.text, hi: ex.hi.text, plo: ex.dHi, phi: ex.dLo });
+}
+
 /** Resumo da parte descartada: G, R, S e quanto ela vale em ULPs. */
 export function droppedSummary(ex) {
     if (ex.exact) return t('rx.noDrop');

@@ -8,19 +8,11 @@ import { FORMATS, ROUNDING_MODES, getFormat } from '../fp/formats.js';
 import { fromText, displayText as shortestText, exactValueText, parseNumber } from '../fp/decimal.js';
 import { multiply, divide, toSigned, toUnsigned } from '../int/arith.js';
 import { hex } from './analysis.js';
+import { rng } from './rng.js';
 
 export const QUESTION_TYPES = ['encode', 'decode', 'exponent', 'round', 'flags', 'intmul', 'intdiv'];
 
-export function rng(seed) {
-    let s = (Number(seed) >>> 0) || 1;
-    return () => {
-        s = (s + 0x6d2b79f5) >>> 0;
-        let t = s;
-        t = Math.imul(t ^ (t >>> 15), t | 1);
-        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-}
+export { rng };
 
 /** Valores "de aula": frações com poucos bits, algumas que não terminam em binário, potências de 2. */
 function niceValue(r, f) {
